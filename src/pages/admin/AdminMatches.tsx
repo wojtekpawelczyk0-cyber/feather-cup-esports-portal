@@ -1,0 +1,357 @@
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, Loader2, Calendar, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+type MatchStatus = 'scheduled' | 'live' | 'finished' | 'cancelled';
+
+interface Team {
+  id: string;
+  name: string;
+}
+
+interface Match {
+  id: string;
+  team1_id: string | null;
+  team2_id: string | null;
+  team1_score: number;
+  team2_score: number;
+  scheduled_at: string;
+  status: MatchStatus;
+  round: string | null;
+  team1?: { name: string } | null;
+  team2?: { name: string } | null;
+}
+
+const AdminMatches = () => {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [formData, setFormData] = useState({
+    team1_id: '',
+    team2_id: '',
+    scheduled_at: '',
+    round: '',
+    status: 'scheduled' as MatchStatus,
+    team1_score: 0,
+    team2_score: 0,
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [matchesRes, teamsRes] = await Promise.all([
+        supabase
+          .from('matches')
+          .select(`*`)
+          .order('scheduled_at', { ascending: true }),
+        supabase.from('teams').select('id, name').order('name'),
+      ]);
+
+      // Map team names to matches
+      const teamsMap = new Map((teamsRes.data || []).map((t: any) => [t.id, t.name]));
+      const matchesWithTeams = (matchesRes.data || []).map((m: any) => ({
+        ...m,
+        team1: m.team1_id ? { name: teamsMap.get(m.team1_id) || 'TBD' } : null,
+        team2: m.team2_id ? { name: teamsMap.get(m.team2_id) || 'TBD' } : null,
+      }));
+
+      setMatches(matchesWithTeams as Match[]);
+      setTeams((teamsRes.data || []) as Team[]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDialog = (match?: Match) => {
+    if (match) {
+      setEditingMatch(match);
+      setFormData({
+        team1_id: match.team1_id || '',
+        team2_id: match.team2_id || '',
+        scheduled_at: match.scheduled_at.slice(0, 16),
+        round: match.round || '',
+        status: match.status,
+        team1_score: match.team1_score,
+        team2_score: match.team2_score,
+      });
+    } else {
+      setEditingMatch(null);
+      setFormData({
+        team1_id: '',
+        team2_id: '',
+        scheduled_at: '',
+        round: '',
+        status: 'scheduled',
+        team1_score: 0,
+        team2_score: 0,
+      });
+    }
+    setIsDialogOpen(true);
+  };
+
+  const saveMatch = async () => {
+    if (!formData.team1_id || !formData.team2_id || !formData.scheduled_at) {
+      toast({ title: 'Wypełnij wszystkie wymagane pola', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const matchData = {
+        team1_id: formData.team1_id,
+        team2_id: formData.team2_id,
+        scheduled_at: formData.scheduled_at,
+        round: formData.round || null,
+        status: formData.status,
+        team1_score: formData.team1_score,
+        team2_score: formData.team2_score,
+      };
+
+      if (editingMatch) {
+        const { error } = await supabase
+          .from('matches')
+          .update(matchData)
+          .eq('id', editingMatch.id);
+        if (error) throw error;
+        toast({ title: 'Mecz zaktualizowany!' });
+      } else {
+        const { error } = await supabase.from('matches').insert(matchData);
+        if (error) throw error;
+        toast({ title: 'Mecz dodany!' });
+      }
+
+      setIsDialogOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteMatch = async (id: string) => {
+    if (!confirm('Czy na pewno chcesz usunąć ten mecz?')) return;
+
+    try {
+      const { error } = await supabase.from('matches').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Mecz usunięty' });
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const statusLabels: Record<MatchStatus, string> = {
+    scheduled: 'Zaplanowany',
+    live: 'Na żywo',
+    finished: 'Zakończony',
+    cancelled: 'Anulowany',
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Mecze</h1>
+          <p className="text-muted-foreground">Zarządzaj harmonogramem meczów</p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="hero" onClick={() => openDialog()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Dodaj mecz
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-card border-border">
+            <DialogHeader>
+              <DialogTitle>{editingMatch ? 'Edytuj mecz' : 'Nowy mecz'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Drużyna 1</Label>
+                  <Select
+                    value={formData.team1_id}
+                    onValueChange={(v) => setFormData({ ...formData, team1_id: v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Wybierz..." /></SelectTrigger>
+                    <SelectContent>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Drużyna 2</Label>
+                  <Select
+                    value={formData.team2_id}
+                    onValueChange={(v) => setFormData({ ...formData, team2_id: v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Wybierz..." /></SelectTrigger>
+                    <SelectContent>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Data i godzina</Label>
+                <Input
+                  type="datetime-local"
+                  value={formData.scheduled_at}
+                  onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Runda</Label>
+                  <Input
+                    value={formData.round}
+                    onChange={(e) => setFormData({ ...formData, round: e.target.value })}
+                    placeholder="np. Ćwierćfinał"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(v) => setFormData({ ...formData, status: v as MatchStatus })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled">Zaplanowany</SelectItem>
+                      <SelectItem value="live">Na żywo</SelectItem>
+                      <SelectItem value="finished">Zakończony</SelectItem>
+                      <SelectItem value="cancelled">Anulowany</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {formData.status === 'finished' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Wynik drużyny 1</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.team1_score}
+                      onChange={(e) => setFormData({ ...formData, team1_score: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Wynik drużyny 2</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.team2_score}
+                      onChange={(e) => setFormData({ ...formData, team2_score: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 mt-6">
+                <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Anuluj</Button>
+                <Button variant="hero" onClick={saveMatch} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {editingMatch ? 'Zapisz' : 'Dodaj'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Matches Table */}
+      <div className="glass-card overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left p-4 text-muted-foreground font-medium">Drużyny</th>
+              <th className="text-left p-4 text-muted-foreground font-medium">Data</th>
+              <th className="text-left p-4 text-muted-foreground font-medium">Runda</th>
+              <th className="text-left p-4 text-muted-foreground font-medium">Status</th>
+              <th className="text-left p-4 text-muted-foreground font-medium">Wynik</th>
+              <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matches.map((match) => (
+              <tr key={match.id} className="border-b border-border/50 hover:bg-secondary/20">
+                <td className="p-4">
+                  <span className="font-semibold text-foreground">
+                    {match.team1?.name || 'TBD'} vs {match.team2?.name || 'TBD'}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(match.scheduled_at).toLocaleDateString('pl-PL')}
+                    <Clock className="w-4 h-4 ml-2" />
+                    {new Date(match.scheduled_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </td>
+                <td className="p-4 text-muted-foreground">{match.round || '-'}</td>
+                <td className="p-4">
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                    match.status === 'live' ? 'bg-red-500/20 text-red-400' :
+                    match.status === 'finished' ? 'bg-green-500/20 text-green-400' :
+                    match.status === 'cancelled' ? 'bg-gray-500/20 text-gray-400' :
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {statusLabels[match.status]}
+                  </span>
+                </td>
+                <td className="p-4 font-bold text-foreground">
+                  {match.status === 'finished' ? `${match.team1_score} : ${match.team2_score}` : '-'}
+                </td>
+                <td className="p-4">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => openDialog(match)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteMatch(match.id)} className="text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {matches.length === 0 && (
+          <p className="text-center text-muted-foreground py-12">Brak meczów</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AdminMatches;
