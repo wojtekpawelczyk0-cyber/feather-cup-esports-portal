@@ -1,1 +1,10 @@
 project_id = "beaalazjcgefwsdsnzev"
+
+[functions.steam-auth]
+verify_jwt = false
+
+[functions.create-tournament-payment]
+verify_jwt = false
+
+[functions.verify-tournament-payment]
+verify_jwt = false

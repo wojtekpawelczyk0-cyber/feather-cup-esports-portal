@@ -1,14 +1,24 @@
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, User, Shield, GraduationCap } from 'lucide-react';
+import { ArrowLeft, User, Shield, GraduationCap, Loader2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
-import { teams } from '@/data/mockData';
+import { useTeamDetails } from '@/hooks/useTeams';
 import { cn } from '@/lib/utils';
 
 const TeamDetails = () => {
   const { id } = useParams();
-  const team = teams.find((t) => t.id === id);
+  const { team, members, loading } = useTeamDetails(id);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!team) {
     return (
@@ -35,16 +45,24 @@ const TeamDetails = () => {
       label: 'W przygotowaniu',
       color: 'bg-yellow-500/20 text-yellow-500',
     },
+    registered: {
+      label: 'Zarejestrowana',
+      color: 'bg-green-500/20 text-green-500',
+    },
   };
 
+  const players = members.filter(m => m.role === 'player');
+  const reserves = members.filter(m => m.role === 'reserve');
+  const coaches = members.filter(m => m.role === 'coach');
+
   const MemberCard = ({
-    nick,
-    role,
+    nickname,
+    position,
     type,
     index,
   }: {
-    nick: string;
-    role: string;
+    nickname: string;
+    position: string | null;
     type: 'player' | 'reserve' | 'coach';
     index: number;
   }) => {
@@ -70,8 +88,8 @@ const TeamDetails = () => {
             <Icon className="w-6 h-6 text-muted-foreground" />
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-foreground">{nick}</h4>
-            <p className="text-sm text-muted-foreground">{role}</p>
+            <h4 className="font-semibold text-foreground">{nickname}</h4>
+            <p className="text-sm text-muted-foreground">{position || '-'}</p>
           </div>
           <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
             {config.badge}
@@ -85,8 +103,12 @@ const TeamDetails = () => {
     <Layout>
       <HeroSection title={team.name} size="sm">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-24 h-24 rounded-3xl bg-secondary flex items-center justify-center mb-2">
-            <span className="text-4xl font-bold text-gradient">{team.name.charAt(0)}</span>
+          <div className="w-24 h-24 rounded-3xl bg-secondary flex items-center justify-center mb-2 overflow-hidden">
+            {team.logo_url ? (
+              <img src={team.logo_url} alt={team.name} className="w-16 h-16 object-contain" />
+            ) : (
+              <span className="text-4xl font-bold text-gradient">{team.name.charAt(0)}</span>
+            )}
           </div>
           <span
             className={cn(
@@ -112,34 +134,38 @@ const TeamDetails = () => {
           <div className="mb-10">
             <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              Gracze ({team.members.players.length}/5)
+              Gracze ({players.length}/5)
             </h3>
-            <div className="grid gap-3">
-              {team.members.players.map((player, index) => (
-                <MemberCard
-                  key={player.nick}
-                  nick={player.nick}
-                  role={player.role}
-                  type="player"
-                  index={index}
-                />
-              ))}
-            </div>
+            {players.length > 0 ? (
+              <div className="grid gap-3">
+                {players.map((player, index) => (
+                  <MemberCard
+                    key={player.id}
+                    nickname={player.nickname}
+                    position={player.position}
+                    type="player"
+                    index={index}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Brak graczy</p>
+            )}
           </div>
 
           {/* Reserves */}
           <div className="mb-10">
             <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <Shield className="w-5 h-5 text-yellow-500" />
-              Rezerwowi ({team.members.reserves.length}/2)
+              Rezerwowi ({reserves.length}/2)
             </h3>
-            {team.members.reserves.length > 0 ? (
+            {reserves.length > 0 ? (
               <div className="grid gap-3">
-                {team.members.reserves.map((reserve, index) => (
+                {reserves.map((reserve, index) => (
                   <MemberCard
-                    key={reserve.nick}
-                    nick={reserve.nick}
-                    role={reserve.role}
+                    key={reserve.id}
+                    nickname={reserve.nickname}
+                    position={reserve.position}
                     type="reserve"
                     index={index}
                   />
@@ -154,14 +180,23 @@ const TeamDetails = () => {
           <div>
             <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-accent" />
-              Trener
+              Trener ({coaches.length}/1)
             </h3>
-            <MemberCard
-              nick={team.members.coach.nick}
-              role={team.members.coach.role}
-              type="coach"
-              index={0}
-            />
+            {coaches.length > 0 ? (
+              <div className="grid gap-3">
+                {coaches.map((coach, index) => (
+                  <MemberCard
+                    key={coach.id}
+                    nickname={coach.nickname}
+                    position={coach.position}
+                    type="coach"
+                    index={index}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Brak trenera</p>
+            )}
           </div>
         </div>
       </section>

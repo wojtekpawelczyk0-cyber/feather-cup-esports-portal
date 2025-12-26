@@ -1,4 +1,4 @@
-import { ArrowRight, Trophy, Users, Calendar, Zap } from 'lucide-react';
+import { ArrowRight, Trophy, Users, Calendar, Zap, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
@@ -6,16 +6,47 @@ import { MatchCard } from '@/components/shared/MatchCard';
 import { SectionTitle } from '@/components/shared/SectionTitle';
 import { SponsorSlider } from '@/components/shared/SponsorSlider';
 import { Button } from '@/components/ui/button';
-import { upcomingMatches, recentMatches, sponsors } from '@/data/mockData';
-
-const stats = [
-  { icon: Trophy, value: '₿50K', label: 'Pula nagród' },
-  { icon: Users, value: '32', label: 'Drużyny' },
-  { icon: Calendar, value: '7', label: 'Dni turnieju' },
-  { icon: Zap, value: '64', label: 'Mecze' },
-];
+import { useMatches } from '@/hooks/useMatches';
+import { useTeams } from '@/hooks/useTeams';
+import { useSponsors } from '@/hooks/useSponsors';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 const Index = () => {
+  const { matches, loading: matchesLoading } = useMatches();
+  const { teams } = useTeams();
+  const { sponsors, loading: sponsorsLoading } = useSponsors();
+
+  const upcomingMatches = matches.filter(m => m.status === 'scheduled' || m.status === 'live').slice(0, 3);
+  const recentMatches = matches.filter(m => m.status === 'finished').slice(0, 3);
+
+  const formatMatchForCard = (match: any) => {
+    const date = new Date(match.scheduled_at);
+    return {
+      id: match.id,
+      team1: {
+        name: match.team1?.name || 'TBD',
+        logo: match.team1?.logo_url || undefined,
+        score: match.team1_score ?? undefined,
+      },
+      team2: {
+        name: match.team2?.name || 'TBD',
+        logo: match.team2?.logo_url || undefined,
+        score: match.team2_score ?? undefined,
+      },
+      date: format(date, 'd MMM', { locale: pl }),
+      time: format(date, 'HH:mm'),
+      status: match.status === 'scheduled' ? 'upcoming' as const : match.status === 'live' ? 'live' as const : 'finished' as const,
+    };
+  };
+
+  const stats = [
+    { icon: Trophy, value: '₿50K', label: 'Pula nagród' },
+    { icon: Users, value: String(teams.length || 32), label: 'Drużyny' },
+    { icon: Calendar, value: '7', label: 'Dni turnieju' },
+    { icon: Zap, value: String(matches.length || 64), label: 'Mecze' },
+  ];
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -26,9 +57,11 @@ const Index = () => {
         showBg
       >
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button variant="hero" size="xl" className="group">
-            Zapisz swoją drużynę
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <Button variant="hero" size="xl" className="group" asChild>
+            <Link to="/moja-druzyna">
+              Zapisz swoją drużynę
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </Button>
           <Button variant="glass" size="xl" asChild>
             <Link to="/mecze">Zobacz harmonogram</Link>
@@ -73,17 +106,27 @@ const Index = () => {
             </Button>
           </div>
 
-          <div className="grid gap-4">
-            {upcomingMatches.slice(0, 3).map((match, index) => (
-              <div
-                key={match.id}
-                className="opacity-0 animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <MatchCard {...match} />
-              </div>
-            ))}
-          </div>
+          {matchesLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : upcomingMatches.length > 0 ? (
+            <div className="grid gap-4">
+              {upcomingMatches.map((match, index) => (
+                <div
+                  key={match.id}
+                  className="opacity-0 animate-fade-in"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <MatchCard {...formatMatchForCard(match)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Brak nadchodzących meczów
+            </p>
+          )}
         </div>
       </section>
 
@@ -101,9 +144,11 @@ const Index = () => {
               Zarejestruj swoją drużynę już dziś i weź udział w Feather Cup 2024. 
               Nagrody, sława i niezapomniane emocje czekają!
             </p>
-            <Button variant="cta" size="xl" className="group">
-              Zapisz swoją drużynę
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <Button variant="cta" size="xl" className="group" asChild>
+              <Link to="/moja-druzyna">
+                Zapisz swoją drużynę
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </Button>
           </div>
         </div>
@@ -125,22 +170,38 @@ const Index = () => {
             </Button>
           </div>
 
-          <div className="grid gap-4">
-            {recentMatches.slice(0, 3).map((match, index) => (
-              <div
-                key={match.id}
-                className="opacity-0 animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <MatchCard {...match} />
-              </div>
-            ))}
-          </div>
+          {matchesLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : recentMatches.length > 0 ? (
+            <div className="grid gap-4">
+              {recentMatches.map((match, index) => (
+                <div
+                  key={match.id}
+                  className="opacity-0 animate-fade-in"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <MatchCard {...formatMatchForCard(match)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Brak zakończonych meczów
+            </p>
+          )}
         </div>
       </section>
 
       {/* Sponsors */}
-      <SponsorSlider sponsors={sponsors} />
+      {!sponsorsLoading && sponsors.length > 0 && (
+        <SponsorSlider sponsors={sponsors.map(s => ({
+          id: s.id,
+          name: s.name,
+          logo: s.logo_url || 'https://placehold.co/100x100/1a1a2e/00d4ff?text=' + s.name.charAt(0),
+        }))} />
+      )}
     </Layout>
   );
 };
