@@ -138,32 +138,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 md:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
-        <div className="hero-glow top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-30" />
-        
-        <div className="container max-w-4xl mx-auto px-4 relative z-10">
-          <div className="glass-card p-8 md:p-12 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gradient-hero">
-              Gotowy na wyzwanie?
-            </h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              Zarejestruj swoją drużynę już dziś i weź udział w {settings.tournament_name}. 
-              Nagrody, sława i niezapomniane emocje czekają!
-            </p>
-            <Button variant="cta" size="xl" className="group" asChild>
-              <Link to="/moja-druzyna">
-                Zapisz swoją drużynę
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* Recent Matches */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-secondary/20">
         <div className="container max-w-6xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <SectionTitle
@@ -199,6 +175,30 @@ const Index = () => {
               Brak zakończonych meczów
             </p>
           )}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 md:py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
+        <div className="hero-glow top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-30" />
+        
+        <div className="container max-w-4xl mx-auto px-4 relative z-10">
+          <div className="glass-card p-8 md:p-12 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gradient-hero">
+              Gotowy na wyzwanie?
+            </h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
+              Zarejestruj swoją drużynę już dziś i weź udział w {settings.tournament_name}. 
+              Nagrody, sława i niezapomniane emocje czekają!
+            </p>
+            <Button variant="cta" size="xl" className="group" asChild>
+              <Link to="/moja-druzyna">
+                Zapisz swoją drużynę
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
