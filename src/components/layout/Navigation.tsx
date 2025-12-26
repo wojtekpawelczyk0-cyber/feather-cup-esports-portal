@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Trophy } from 'lucide-react';
+import { Menu, X, Trophy, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
@@ -15,6 +16,12 @@ const navLinks = [
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4">
@@ -48,12 +55,40 @@ export const Navigation = () => {
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="glass" size="sm">
-              Zaloguj się
-            </Button>
-            <Button variant="hero" size="sm">
-              Zapisz drużynę
-            </Button>
+            {user ? (
+              <>
+                <Link to="/konto" className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden border-2 border-primary/30">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt={profile.display_name || 'Avatar'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-sm text-foreground">
+                    {profile?.display_name || user.email?.split('@')[0]}
+                  </span>
+                </Link>
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="glass" size="sm" asChild>
+                  <Link to="/auth">Zaloguj się</Link>
+                </Button>
+                <Button variant="hero" size="sm" asChild>
+                  <Link to="/auth">Zapisz drużynę</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -86,12 +121,33 @@ export const Navigation = () => {
                 </Link>
               ))}
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
-                <Button variant="glass" className="w-full">
-                  Zaloguj się
-                </Button>
-                <Button variant="hero" className="w-full">
-                  Zapisz drużynę
-                </Button>
+                {user ? (
+                  <>
+                    <Button variant="glass" className="w-full" asChild>
+                      <Link to="/konto" onClick={() => setIsOpen(false)}>
+                        <User className="w-4 h-4 mr-2" />
+                        Moje konto
+                      </Link>
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={handleSignOut}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Wyloguj się
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="glass" className="w-full" asChild>
+                      <Link to="/auth" onClick={() => setIsOpen(false)}>
+                        Zaloguj się
+                      </Link>
+                    </Button>
+                    <Button variant="hero" className="w-full" asChild>
+                      <Link to="/auth" onClick={() => setIsOpen(false)}>
+                        Zapisz drużynę
+                      </Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
