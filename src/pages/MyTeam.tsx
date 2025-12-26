@@ -529,10 +529,27 @@ const MyTeam = () => {
                         className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 border border-border/50"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                            {member.role === 'player' && <Users className="w-5 h-5 text-primary" />}
-                            {member.role === 'reserve' && <Shield className="w-5 h-5 text-yellow-500" />}
-                            {member.role === 'coach' && <GraduationCap className="w-5 h-5 text-accent" />}
+                          <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
+                            {member.steam_id ? (
+                              <img 
+                                src={`https://avatars.akamai.steamstatic.com/${member.steam_id.slice(-16)}_medium.jpg`}
+                                alt={member.nickname}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={cn(
+                              "w-full h-full flex items-center justify-center",
+                              member.steam_id && "hidden"
+                            )}>
+                              {member.role === 'player' && <Users className="w-5 h-5 text-primary" />}
+                              {member.role === 'reserve' && <Shield className="w-5 h-5 text-yellow-500" />}
+                              {member.role === 'coach' && <GraduationCap className="w-5 h-5 text-accent" />}
+                            </div>
                           </div>
                           <div>
                             <div className="font-semibold text-foreground">{member.nickname}</div>
@@ -544,9 +561,14 @@ const MyTeam = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {member.steam_id && (
-                            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                              {member.steam_id.slice(0, 10)}...
-                            </span>
+                            <a 
+                              href={`https://steamcommunity.com/profiles/${member.steam_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded hover:bg-primary/20 hover:text-primary transition-colors"
+                            >
+                              Steam
+                            </a>
                           )}
                           <Button
                             variant="ghost"
