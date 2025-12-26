@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Shield, GraduationCap, Trash2, Loader2, Check, AlertCircle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Users, Shield, GraduationCap, Trash2, Loader2, Check, AlertCircle, CreditCard } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -34,10 +34,12 @@ interface Team {
 
 const MyTeam = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [newTeamName, setNewTeamName] = useState('');
@@ -56,6 +58,67 @@ const MyTeam = () => {
       fetchTeam();
     }
   }, [user, authLoading, navigate]);
+
+  // Handle payment callback
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    const teamId = searchParams.get('team_id');
+    
+    if (payment === 'success' && teamId) {
+      verifyPayment(teamId);
+    } else if (payment === 'cancelled') {
+      toast({
+        title: 'Płatność anulowana',
+        description: 'Możesz spróbować ponownie w dowolnym momencie.',
+        variant: 'destructive',
+      });
+    }
+  }, [searchParams]);
+
+  const verifyPayment = async (teamId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-tournament-payment', {
+        body: { team_id: teamId },
+      });
+
+      if (error) throw error;
+
+      if (data?.paid) {
+        toast({
+          title: 'Płatność zakończona!',
+          description: 'Twoja drużyna została zarejestrowana do turnieju.',
+        });
+        fetchTeam();
+      }
+    } catch (error: any) {
+      console.error('Payment verification error:', error);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!team) return;
+
+    setPaymentLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-tournament-payment', {
+        body: { team_id: team.id },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Błąd płatności',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const fetchTeam = async () => {
     if (!user) return;
@@ -282,8 +345,13 @@ const MyTeam = () => {
                     </div>
                   </div>
                   {isTeamReady && !team.is_paid && (
-                    <Button variant="hero">
-                      Zapłać wpisowe
+                    <Button variant="hero" onClick={handlePayment} disabled={paymentLoading}>
+                      {paymentLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CreditCard className="w-4 h-4 mr-2" />
+                      )}
+                      Zapłać wpisowe (50 PLN)
                     </Button>
                   )}
                 </div>
