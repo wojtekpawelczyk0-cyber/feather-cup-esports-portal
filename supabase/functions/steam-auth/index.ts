@@ -42,9 +42,44 @@ Deno.serve(async (req) => {
       })
     }
 
+    if (action === 'link') {
+      // Generate Steam OpenID login URL for account linking
+      const returnUrl = url.searchParams.get('return_url') || url.origin + '/konto'
+      const userId = url.searchParams.get('user_id')
+      
+      if (!userId) {
+        throw new Error('User ID is required for linking')
+      }
+      
+      // Store user_id in return URL for verification
+      const linkReturnUrl = returnUrl.includes('?') 
+        ? `${returnUrl}&link_user_id=${userId}` 
+        : `${returnUrl}?link_user_id=${userId}`
+      
+      const callbackUrl = `${new URL(returnUrl).origin}/auth/steam-callback?link_user_id=${userId}&final_redirect=${encodeURIComponent(returnUrl)}`
+      
+      const params = new URLSearchParams({
+        'openid.ns': 'http://specs.openid.net/auth/2.0',
+        'openid.mode': 'checkid_setup',
+        'openid.return_to': callbackUrl,
+        'openid.realm': new URL(returnUrl).origin,
+        'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
+        'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
+      })
+
+      const steamLoginUrl = `${STEAM_OPENID_URL}?${params.toString()}`
+      
+      console.log('Redirecting to Steam for linking:', steamLoginUrl)
+
+      return new Response(JSON.stringify({ url: steamLoginUrl }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     if (action === 'verify') {
       // Verify Steam OpenID response
       const openidParams = url.searchParams
+      const linkUserId = openidParams.get('link_user_id')
       
       // Change mode to check_authentication for verification
       const verifyParams = new URLSearchParams()
@@ -99,12 +134,54 @@ Deno.serve(async (req) => {
         throw new Error('Could not fetch player info')
       }
 
-      // Create or sign in user in Supabase
+      // Create Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-      // Check if user with this Steam ID exists
+      // If this is a link action, just update the existing user's profile
+      if (linkUserId) {
+        console.log('Linking Steam to existing user:', linkUserId)
+        
+        // Check if Steam ID is already linked to another account
+        const { data: existingLink } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('steam_id', steamId)
+          .maybeSingle()
+        
+        if (existingLink && existingLink.user_id !== linkUserId) {
+          throw new Error('To konto Steam jest już połączone z innym użytkownikiem')
+        }
+        
+        // Update profile with Steam data
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            steam_id: steamId,
+            display_name: player.personaname,
+            avatar_url: player.avatarfull,
+          })
+          .eq('user_id', linkUserId)
+
+        if (updateError) {
+          console.error('Update profile error:', updateError)
+          throw updateError
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          linked: true,
+          steamId,
+          displayName: player.personaname,
+          avatarUrl: player.avatarfull,
+          userId: linkUserId,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      // Normal login flow - check if user with this Steam ID exists
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('user_id')

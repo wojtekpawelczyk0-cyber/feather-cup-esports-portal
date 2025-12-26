@@ -19,6 +19,9 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
   initiateSteamLogin: () => Promise<void>;
+  linkSteamAccount: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  isSteamLinked: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,6 +78,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -105,13 +114,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const initiateSteamLogin = async () => {
     const returnUrl = `${window.location.origin}/auth/steam-callback`;
-    
-    const { data, error } = await supabase.functions.invoke('steam-auth', {
-      body: null,
-      headers: {},
-    });
-
-    // Build the URL with query params
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/steam-auth?action=login&return_url=${encodeURIComponent(returnUrl)}`;
     
     const response = await fetch(functionUrl);
@@ -121,6 +123,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       window.location.href = result.url;
     }
   };
+
+  const linkSteamAccount = async () => {
+    if (!session?.access_token) {
+      throw new Error('Musisz być zalogowany, aby połączyć konto Steam');
+    }
+    
+    const returnUrl = `${window.location.origin}/konto?steam_linked=true`;
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/steam-auth?action=link&return_url=${encodeURIComponent(returnUrl)}&user_id=${user?.id}`;
+    
+    const response = await fetch(functionUrl);
+    const result = await response.json();
+    
+    if (result.url) {
+      window.location.href = result.url;
+    }
+  };
+
+  const isSteamLinked = !!profile?.steam_id;
 
   return (
     <AuthContext.Provider
@@ -133,6 +153,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signInWithEmail,
         signUpWithEmail,
         initiateSteamLogin,
+        linkSteamAccount,
+        refreshProfile,
+        isSteamLinked,
       }}
     >
       {children}

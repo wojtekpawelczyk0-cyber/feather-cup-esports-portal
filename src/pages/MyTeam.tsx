@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Users, Shield, GraduationCap, Trash2, Loader2, Check, AlertCircle, CreditCard } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Plus, Users, Shield, GraduationCap, Trash2, Loader2, Check, AlertCircle, CreditCard, Link2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+
 
 type MemberRole = 'player' | 'reserve' | 'coach';
 type TeamStatus = 'preparing' | 'ready' | 'registered';
@@ -35,7 +36,7 @@ interface Team {
 const MyTeam = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isSteamLinked, profile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -266,7 +267,22 @@ const MyTeam = () => {
 
       <section className="py-12 md:py-16">
         <div className="container max-w-4xl mx-auto px-4">
-          {!team ? (
+          {/* Steam requirement check */}
+          {!isSteamLinked ? (
+            <div className="glass-card p-8 text-center border-2 border-yellow-500/30">
+              <Link2 className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
+              <h2 className="text-2xl font-bold mb-2">Wymagane połączenie Steam</h2>
+              <p className="text-muted-foreground mb-6">
+                Aby utworzyć drużynę lub dołączyć jako członek, musisz najpierw połączyć swoje konto Steam.
+              </p>
+              <Button variant="hero" asChild>
+                <Link to="/konto">
+                  <Link2 className="w-4 h-4 mr-2" />
+                  Połącz konto Steam
+                </Link>
+              </Button>
+            </div>
+          ) : !team ? (
             // No team - show create form
             <div className="glass-card p-8 text-center">
               {!showCreateForm ? (

@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { LogOut, Settings, User, Shield, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { LogOut, Settings, User, Shield, Loader2, Link2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 
 const Account = () => {
   const navigate = useNavigate();
-  const { user, profile, loading, signOut } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, profile, loading, signOut, linkSteamAccount, refreshProfile, isSteamLinked } = useAuth();
   const { toast } = useToast();
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -18,10 +20,31 @@ const Account = () => {
     }
   }, [user, loading, navigate]);
 
+  // Handle Steam link callback
+  useEffect(() => {
+    const steamLinked = searchParams.get('steam_linked');
+    if (steamLinked === 'true') {
+      refreshProfile();
+      toast({ title: 'Konto Steam połączone!', description: 'Możesz teraz tworzyć i dołączać do drużyn.' });
+      // Clear URL params
+      window.history.replaceState({}, '', '/konto');
+    }
+  }, [searchParams]);
+
   const handleSignOut = async () => {
     await signOut();
     toast({ title: 'Wylogowano pomyślnie' });
     navigate('/');
+  };
+
+  const handleLinkSteam = async () => {
+    setLinking(true);
+    try {
+      await linkSteamAccount();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+      setLinking(false);
+    }
   };
 
   if (loading) {
@@ -72,6 +95,49 @@ const Account = () => {
 
       <section className="py-12 md:py-16">
         <div className="container max-w-2xl mx-auto px-4">
+          {/* Steam Connection Card */}
+          <div className={`glass-card p-6 mb-6 border-2 ${isSteamLinked ? 'border-green-500/30' : 'border-yellow-500/30'}`}>
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Link2 className="w-5 h-5 text-primary" />
+              Połączenie Steam
+            </h3>
+            
+            {isSteamLinked ? (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10">
+                <CheckCircle className="w-6 h-6 text-green-500" />
+                <div>
+                  <p className="font-medium text-foreground">Konto Steam połączone</p>
+                  <p className="text-sm text-muted-foreground">Steam ID: {profile?.steam_id}</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 mb-4">
+                  <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Konto Steam niepołączone</p>
+                    <p className="text-sm text-muted-foreground">
+                      Aby utworzyć drużynę lub dołączyć jako członek, musisz połączyć swoje konto Steam.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="hero" 
+                  onClick={handleLinkSteam} 
+                  disabled={linking}
+                  className="w-full"
+                >
+                  {linking ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Link2 className="w-4 h-4 mr-2" />
+                  )}
+                  Połącz konto Steam
+                </Button>
+              </>
+            )}
+          </div>
+
           {/* Account Info Card */}
           <div className="glass-card p-6 mb-6">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -89,8 +155,8 @@ const Account = () => {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-border/50">
                 <span className="text-muted-foreground">Steam</span>
-                <span className="text-foreground">
-                  {profile?.steam_id ? 'Połączone' : 'Niepołączone'}
+                <span className={isSteamLinked ? 'text-green-500' : 'text-yellow-500'}>
+                  {isSteamLinked ? 'Połączone' : 'Niepołączone'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">
@@ -112,6 +178,19 @@ const Account = () => {
               <Button variant="outline" className="w-full justify-start" disabled>
                 <Shield className="w-4 h-4 mr-2" />
                 Zmień hasło
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div className="glass-card p-6 mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Szybkie linki</h3>
+            <div className="flex flex-col gap-2">
+              <Button variant="outline" asChild className="w-full justify-start">
+                <Link to="/moja-druzyna">
+                  <User className="w-4 h-4 mr-2" />
+                  Moja drużyna
+                </Link>
               </Button>
             </div>
           </div>

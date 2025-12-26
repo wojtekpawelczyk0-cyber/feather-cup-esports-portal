@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Trophy, Calendar, Zap, Users } from 'lucide-react';
+import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,6 +18,7 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<Record<string, string>>({
+    // Tournament settings
     entry_fee: '50',
     tournament_name: 'Feather Cup 2024',
     max_teams: '32',
@@ -24,6 +26,13 @@ const AdminSettings = () => {
     tournament_days: '7',
     hero_title: 'Feather Cup 2024',
     hero_subtitle: 'Dołącz do największego turnieju esportowego tego roku. Rywalizuj z najlepszymi, zdobywaj nagrody i stań się legendą.',
+    // Footer settings
+    footer_description: 'Profesjonalny turniej esportowy z nagrodami. Dołącz do najlepszych graczy i pokaż swoje umiejętności na arenie Feather Cup.',
+    footer_twitter: '',
+    footer_youtube: '',
+    footer_twitch: '',
+    footer_discord: '',
+    footer_copyright: '© 2024 Feather Cup. Wszelkie prawa zastrzeżone.',
   });
 
   useEffect(() => {
@@ -104,11 +113,12 @@ const AdminSettings = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="hero_subtitle">Podtytuł Hero</Label>
-              <Input
+              <Textarea
                 id="hero_subtitle"
                 value={settings.hero_subtitle}
                 onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value })}
                 placeholder="Opis turnieju..."
+                rows={2}
               />
             </div>
           </div>
@@ -183,6 +193,82 @@ const AdminSettings = () => {
                 value={settings.tournament_name}
                 onChange={(e) => setSettings({ ...settings, tournament_name: e.target.value })}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Settings */}
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Link2 className="w-5 h-5 text-primary" />
+            Stopka
+          </h2>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="footer_description">Opis w stopce</Label>
+              <Textarea
+                id="footer_description"
+                value={settings.footer_description}
+                onChange={(e) => setSettings({ ...settings, footer_description: e.target.value })}
+                placeholder="Opis turnieju w stopce..."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="footer_copyright">Copyright</Label>
+              <Input
+                id="footer_copyright"
+                value={settings.footer_copyright}
+                onChange={(e) => setSettings({ ...settings, footer_copyright: e.target.value })}
+                placeholder="© 2024 Feather Cup..."
+              />
+            </div>
+            <div className="border-t border-border pt-4 mt-4">
+              <h3 className="font-medium text-foreground mb-3">Social Media (URL)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="footer_twitter" className="flex items-center gap-2">
+                    <Twitter className="w-4 h-4 text-muted-foreground" />
+                    Twitter / X
+                  </Label>
+                  <Input
+                    id="footer_twitter"
+                    value={settings.footer_twitter}
+                    onChange={(e) => setSettings({ ...settings, footer_twitter: e.target.value })}
+                    placeholder="https://twitter.com/..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="footer_youtube" className="flex items-center gap-2">
+                    <Youtube className="w-4 h-4 text-muted-foreground" />
+                    YouTube
+                  </Label>
+                  <Input
+                    id="footer_youtube"
+                    value={settings.footer_youtube}
+                    onChange={(e) => setSettings({ ...settings, footer_youtube: e.target.value })}
+                    placeholder="https://youtube.com/..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="footer_twitch">Twitch</Label>
+                  <Input
+                    id="footer_twitch"
+                    value={settings.footer_twitch}
+                    onChange={(e) => setSettings({ ...settings, footer_twitch: e.target.value })}
+                    placeholder="https://twitch.tv/..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="footer_discord">Discord</Label>
+                  <Input
+                    id="footer_discord"
+                    value={settings.footer_discord}
+                    onChange={(e) => setSettings({ ...settings, footer_discord: e.target.value })}
+                    placeholder="https://discord.gg/..."
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
