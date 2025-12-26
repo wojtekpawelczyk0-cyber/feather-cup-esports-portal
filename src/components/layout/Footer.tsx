@@ -21,8 +21,12 @@ export const Footer = () => {
           {/* Logo & Description */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-primary-foreground" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
+                {tournamentSettings.site_logo_url ? (
+                  <img src={tournamentSettings.site_logo_url} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Trophy className="w-5 h-5 text-primary-foreground" />
+                )}
               </div>
               <span className="text-xl font-bold text-foreground">
                 {tournamentSettings.tournament_name.split(' ')[0]}{' '}

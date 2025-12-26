@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube } from 'lucide-react';
+import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,8 @@ const AdminSettings = () => {
     tournament_days: '7',
     hero_title: 'Feather Cup 2024',
     hero_subtitle: 'Dołącz do największego turnieju esportowego tego roku. Rywalizuj z najlepszymi, zdobywaj nagrody i stań się legendą.',
+    // Branding
+    site_logo_url: '',
     // Footer settings
     footer_description: 'Profesjonalny turniej esportowy z nagrodami. Dołącz do najlepszych graczy i pokaż swoje umiejętności na arenie Feather Cup.',
     footer_twitter: '',
@@ -194,6 +196,48 @@ const AdminSettings = () => {
                 onChange={(e) => setSettings({ ...settings, tournament_name: e.target.value })}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Branding Settings */}
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Image className="w-5 h-5 text-primary" />
+            Logo / Branding
+          </h2>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="site_logo_url">URL logo turnieju (zamieni ikonę pucharu)</Label>
+              <Input
+                id="site_logo_url"
+                value={settings.site_logo_url}
+                onChange={(e) => setSettings({ ...settings, site_logo_url: e.target.value })}
+                placeholder="https://example.com/logo.png"
+              />
+              <p className="text-xs text-muted-foreground">
+                Podaj URL do obrazka logo. Zostanie użyte w nawigacji i stopce zamiast ikony pucharu.
+              </p>
+            </div>
+            {settings.site_logo_url && (
+              <div className="p-4 rounded-xl bg-secondary/50">
+                <p className="text-sm text-muted-foreground mb-2">Podgląd:</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={settings.site_logo_url} 
+                      alt="Logo preview" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm text-foreground">
+                    {settings.tournament_name}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

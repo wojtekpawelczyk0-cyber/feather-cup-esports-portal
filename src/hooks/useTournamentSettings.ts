@@ -9,6 +9,7 @@ interface TournamentSettings {
   max_teams: string;
   tournament_days: string;
   entry_fee: string;
+  site_logo_url: string;
 }
 
 const defaultSettings: TournamentSettings = {
@@ -19,6 +20,7 @@ const defaultSettings: TournamentSettings = {
   max_teams: '32',
   tournament_days: '7',
   entry_fee: '50',
+  site_logo_url: '',
 };
 
 export const useTournamentSettings = () => {
