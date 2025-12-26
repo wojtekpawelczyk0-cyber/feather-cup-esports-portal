@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useMatches } from '@/hooks/useMatches';
 import { useTeams } from '@/hooks/useTeams';
 import { useSponsors } from '@/hooks/useSponsors';
+import { useTournamentSettings } from '@/hooks/useTournamentSettings';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 
@@ -16,6 +17,7 @@ const Index = () => {
   const { matches, loading: matchesLoading } = useMatches();
   const { teams } = useTeams();
   const { sponsors, loading: sponsorsLoading } = useSponsors();
+  const { settings, loading: settingsLoading } = useTournamentSettings();
 
   const upcomingMatches = matches.filter(m => m.status === 'scheduled' || m.status === 'live').slice(0, 3);
   const recentMatches = matches.filter(m => m.status === 'finished').slice(0, 3);
@@ -41,18 +43,18 @@ const Index = () => {
   };
 
   const stats = [
-    { icon: Trophy, value: '₿50K', label: 'Pula nagród' },
-    { icon: Users, value: String(teams.length || 32), label: 'Drużyny' },
-    { icon: Calendar, value: '7', label: 'Dni turnieju' },
-    { icon: Zap, value: String(matches.length || 64), label: 'Mecze' },
+    { icon: Trophy, value: settings.prize_pool, label: 'Pula nagród' },
+    { icon: Users, value: teams.length > 0 ? String(teams.length) : settings.max_teams, label: 'Drużyny' },
+    { icon: Calendar, value: settings.tournament_days, label: 'Dni turnieju' },
+    { icon: Zap, value: matches.length > 0 ? String(matches.length) : '64', label: 'Mecze' },
   ];
 
   return (
     <Layout>
       {/* Hero Section */}
       <HeroSection
-        title="Feather Cup 2024"
-        subtitle="Dołącz do największego turnieju esportowego tego roku. Rywalizuj z najlepszymi, zdobywaj nagrody i stań się legendą."
+        title={settings.hero_title}
+        subtitle={settings.hero_subtitle}
         size="lg"
         showBg
       >
@@ -72,21 +74,27 @@ const Index = () => {
       {/* Stats Section */}
       <section className="py-12 border-y border-border/50">
         <div className="container max-w-6xl mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
-              <div
-                key={stat.label}
-                className="text-center opacity-0 animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="w-7 h-7 text-primary" />
+          {settingsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {stats.map((stat, index) => (
+                <div
+                  key={stat.label}
+                  className="text-center opacity-0 animate-fade-in"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <stat.icon className="w-7 h-7 text-primary" />
+                  </div>
+                  <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
+                  <div className="text-muted-foreground text-sm">{stat.label}</div>
                 </div>
-                <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
-                <div className="text-muted-foreground text-sm">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -141,7 +149,7 @@ const Index = () => {
               Gotowy na wyzwanie?
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              Zarejestruj swoją drużynę już dziś i weź udział w Feather Cup 2024. 
+              Zarejestruj swoją drużynę już dziś i weź udział w {settings.tournament_name}. 
               Nagrody, sława i niezapomniane emocje czekają!
             </p>
             <Button variant="cta" size="xl" className="group" asChild>
