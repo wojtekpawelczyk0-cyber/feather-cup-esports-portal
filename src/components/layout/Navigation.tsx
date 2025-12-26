@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Trophy, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useTournamentSettings } from '@/hooks/useTournamentSettings';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
@@ -17,11 +18,17 @@ export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
+  const { settings } = useTournamentSettings();
 
   const handleSignOut = async () => {
     await signOut();
     setIsOpen(false);
   };
+
+  const tournamentName = settings.tournament_name || 'Feather Cup';
+  const nameParts = tournamentName.split(' ');
+  const firstWord = nameParts[0];
+  const restOfName = nameParts.slice(1).join(' ');
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4">
@@ -29,11 +36,15 @@ export const Navigation = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)] transition-shadow duration-300">
-              <Trophy className="w-5 h-5 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)] transition-shadow duration-300 overflow-hidden">
+              {settings.site_logo_url ? (
+                <img src={settings.site_logo_url} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <Trophy className="w-5 h-5 text-primary-foreground" />
+              )}
             </div>
             <span className="text-xl font-bold text-foreground hidden sm:block">
-              Feather <span className="text-gradient">Cup</span>
+              {firstWord} <span className="text-gradient">{restOfName}</span>
             </span>
           </Link>
 

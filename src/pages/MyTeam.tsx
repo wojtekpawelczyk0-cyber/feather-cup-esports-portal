@@ -186,8 +186,45 @@ const MyTeam = () => {
     }
   };
 
+  const validateSteamId = (steamId: string): boolean => {
+    // Steam64 ID format: 17 digit number starting with 7656119
+    const steam64Regex = /^7656119\d{10}$/;
+    return steam64Regex.test(steamId);
+  };
+
   const addMember = async () => {
     if (!team || !newMember.nickname.trim()) return;
+
+    // Validate Steam ID is provided
+    if (!newMember.steam_id.trim()) {
+      toast({
+        title: 'Wymagane Steam ID',
+        description: 'Każdy członek drużyny musi mieć podane Steam ID.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate Steam ID format
+    if (!validateSteamId(newMember.steam_id.trim())) {
+      toast({
+        title: 'Nieprawidłowe Steam ID',
+        description: 'Steam ID musi być w formacie Steam64 (17 cyfr, zaczyna się od 7656119).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if Steam ID is already used
+    const existingSteamMember = members.find(m => m.steam_id === newMember.steam_id.trim());
+    if (existingSteamMember) {
+      toast({
+        title: 'Steam ID już w użyciu',
+        description: 'Ten Steam ID jest już przypisany do innego członka drużyny.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -196,7 +233,7 @@ const MyTeam = () => {
         .insert({
           team_id: team.id,
           nickname: newMember.nickname.trim(),
-          steam_id: newMember.steam_id.trim() || null,
+          steam_id: newMember.steam_id.trim(),
           role: newMember.role,
           position: newMember.position.trim() || null,
         });
@@ -429,13 +466,15 @@ const MyTeam = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Steam ID</Label>
+                    <Label>Steam ID <span className="text-destructive">*</span></Label>
                     <Input
                       value={newMember.steam_id}
                       onChange={(e) => setNewMember({ ...newMember, steam_id: e.target.value })}
                       placeholder="76561198..."
                       className="bg-secondary/50"
+                      required
                     />
+                    <p className="text-xs text-muted-foreground">Format Steam64 (17 cyfr)</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Rola</Label>
