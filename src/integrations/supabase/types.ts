@@ -77,6 +77,27 @@ export type Database = {
           },
         ]
       }
+      page_visits: {
+        Row: {
+          id: string
+          page_path: string
+          visited_at: string
+          visitor_id: string | null
+        }
+        Insert: {
+          id?: string
+          page_path?: string
+          visited_at?: string
+          visitor_id?: string | null
+        }
+        Update: {
+          id?: string
+          page_path?: string
+          visited_at?: string
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
