@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Trophy } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import confetti from 'canvas-confetti';
 
 interface Team {
   id: string;
@@ -26,31 +27,79 @@ interface Match {
   team2?: Team | null;
 }
 
+// Notification sound as base64 (short beep)
+const NOTIFICATION_SOUND = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleVoYCVeV1OKtZSURDlKLzuCqZCYXEU+GyNymZCgaE0yBxNejZCseFUl8wNSgZCweF0Z3vdGdZC4gGEN0utGeZDAiGkFxuM6bYzIjG0BwuMybYzQlHT9utsqZYzYmHj5ttsqZYzYmHj5ttsqZYzYmHz5utsqaYzYmHj5utsqaYzYm';
+
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio(NOTIFICATION_SOUND);
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  } catch {}
+};
+
+const triggerConfetti = () => {
+  const duration = 3000;
+  const end = Date.now() + duration;
+
+  const frame = () => {
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: ['#ff6b35', '#f7c948', '#ffffff']
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: ['#ff6b35', '#f7c948', '#ffffff']
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  };
+
+  frame();
+};
+
 const Results = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const previousMatchesRef = useRef<Match[]>([]);
 
-  useEffect(() => {
-    fetchMatches();
+  const handleMatchUpdates = useCallback((newMatches: Match[]) => {
+    const prevMatches = previousMatchesRef.current;
+    
+    // Check for newly finished matches (confetti)
+    newMatches.forEach(match => {
+      const prevMatch = prevMatches.find(m => m.id === match.id);
+      if (prevMatch && prevMatch.status === 'live' && match.status === 'finished') {
+        triggerConfetti();
+      }
+    });
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('results-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'matches' },
-        () => {
-          fetchMatches();
+    // Check for score changes in live matches (sound)
+    newMatches.forEach(match => {
+      if (match.status === 'live') {
+        const prevMatch = prevMatches.find(m => m.id === match.id);
+        if (prevMatch && prevMatch.status === 'live') {
+          if (prevMatch.team1_score !== match.team1_score || 
+              prevMatch.team2_score !== match.team2_score) {
+            playNotificationSound();
+          }
         }
-      )
-      .subscribe();
+      }
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    previousMatchesRef.current = newMatches;
+    setMatches(newMatches);
   }, []);
 
-  const fetchMatches = async () => {
+  const fetchMatches = useCallback(async (withCallback = false) => {
     try {
       const { data, error } = await supabase
         .from('matches')
@@ -63,13 +112,39 @@ const Results = () => {
         .order('scheduled_at', { ascending: false });
 
       if (error) throw error;
-      setMatches(data || []);
+      
+      if (withCallback) {
+        handleMatchUpdates(data || []);
+      } else {
+        previousMatchesRef.current = data || [];
+        setMatches(data || []);
+      }
     } catch (error) {
       console.error('Error fetching matches:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [handleMatchUpdates]);
+
+  useEffect(() => {
+    fetchMatches(false);
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('results-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches' },
+        () => {
+          fetchMatches(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchMatches]);
 
   const liveMatches = matches.filter(m => m.status === 'live');
   const finishedMatches = matches.filter(m => m.status === 'finished');
