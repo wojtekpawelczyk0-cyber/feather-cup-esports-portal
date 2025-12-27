@@ -48,13 +48,20 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, userId, email, password, displayName } = body;
+    const { action, userId, email, password, displayName, reason, banUntil } = body;
 
     switch (action) {
       case "list_users": {
-        // List all users
         const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
         if (error) throw error;
+        
+        // Get bans for all users
+        const { data: bansData } = await supabaseAdmin
+          .from("user_bans")
+          .select("*")
+          .gt("banned_until", new Date().toISOString());
+        
+        const bansMap = new Map((bansData || []).map((b: any) => [b.user_id, b]));
         
         return new Response(
           JSON.stringify({ users: users.map(u => ({
@@ -63,6 +70,7 @@ Deno.serve(async (req) => {
             created_at: u.created_at,
             last_sign_in_at: u.last_sign_in_at,
             email_confirmed_at: u.email_confirmed_at,
+            ban: bansMap.get(u.id) || null,
           })) }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -111,7 +119,6 @@ Deno.serve(async (req) => {
           throw new Error("Missing userId");
         }
 
-        // Don't allow deleting yourself
         if (userId === user.id) {
           throw new Error("Cannot delete your own account");
         }
@@ -141,6 +148,51 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, user: data.user }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "ban_user": {
+        if (!userId || !banUntil) {
+          throw new Error("Missing userId or banUntil");
+        }
+
+        if (userId === user.id) {
+          throw new Error("Cannot ban yourself");
+        }
+
+        // Insert ban record
+        const { error } = await supabaseAdmin.from("user_bans").insert({
+          user_id: userId,
+          banned_by: user.id,
+          reason: reason || null,
+          banned_until: banUntil,
+        });
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({ success: true, message: "User banned" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "unban_user": {
+        if (!userId) {
+          throw new Error("Missing userId");
+        }
+
+        // Delete active bans
+        const { error } = await supabaseAdmin
+          .from("user_bans")
+          .delete()
+          .eq("user_id", userId)
+          .gt("banned_until", new Date().toISOString());
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({ success: true, message: "User unbanned" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

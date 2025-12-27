@@ -21,6 +21,7 @@ import AdminTeams from "./pages/admin/AdminTeams";
 import AdminSponsors from "./pages/admin/AdminSponsors";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
+import CommentatorPanel from "./pages/admin/CommentatorPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
+              <Route path="komentator" element={<CommentatorPanel />} />
               <Route path="mecze" element={<AdminMatches />} />
               <Route path="druzyny" element={<AdminTeams />} />
               <Route path="wyniki" element={<AdminMatches />} />
