@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus, Ban, CheckCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus, Ban, CheckCircle, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,12 +71,47 @@ const AdminUsers = () => {
     password: '',
     displayName: '',
   });
-  const [activeTab, setActiveTab] = useState<'roles' | 'users'>('roles');
+  const [activeTab, setActiveTab] = useState<'roles' | 'users' | 'bans'>('roles');
+  const [banHistory, setBanHistory] = useState<UserBan[]>([]);
+  const [banProfiles, setBanProfiles] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     fetchUserRoles();
     fetchAllUsers();
+    fetchBanHistory();
   }, []);
+
+  const fetchBanHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_bans')
+        .select('*')
+        .order('banned_at', { ascending: false });
+
+      if (error) throw error;
+
+      setBanHistory(data || []);
+
+      // Get profiles for banned users
+      const userIds = new Set<string>();
+      (data || []).forEach((b: any) => {
+        userIds.add(b.user_id);
+        userIds.add(b.banned_by);
+      });
+
+      if (userIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', Array.from(userIds));
+
+        const profilesMap = new Map((profiles || []).map((p: any) => [p.user_id, p.display_name || 'Nieznany']));
+        setBanProfiles(profilesMap);
+      }
+    } catch (error) {
+      console.error('Error fetching ban history:', error);
+    }
+  };
 
   const fetchUserRoles = async () => {
     setLoading(true);
@@ -478,6 +513,13 @@ const AdminUsers = () => {
           <UserPlus className="w-4 h-4 mr-2" />
           Wszyscy użytkownicy
         </Button>
+        <Button
+          variant={activeTab === 'bans' ? 'hero' : 'ghost'}
+          onClick={() => setActiveTab('bans')}
+        >
+          <History className="w-4 h-4 mr-2" />
+          Historia banów
+        </Button>
       </div>
 
       {activeTab === 'roles' && (
@@ -628,6 +670,63 @@ const AdminUsers = () => {
           </table>
           {allUsers.length === 0 && (
             <p className="text-center text-muted-foreground py-12">Brak użytkowników</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'bans' && (
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left p-4 text-muted-foreground font-medium">Użytkownik</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Zbanowany przez</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Powód</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Data bana</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Do kiedy</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {banHistory.map((ban) => {
+                const isActive = new Date(ban.banned_until) > new Date();
+                return (
+                  <tr key={ban.id} className="border-b border-border/50 hover:bg-secondary/20">
+                    <td className="p-4">
+                      <span className="font-semibold text-foreground">
+                        {banProfiles.get(ban.user_id) || 'Nieznany'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-muted-foreground">
+                      {banProfiles.get(ban.banned_by) || 'Nieznany'}
+                    </td>
+                    <td className="p-4 text-muted-foreground">
+                      {ban.reason || '-'}
+                    </td>
+                    <td className="p-4 text-muted-foreground">
+                      {new Date(ban.banned_at).toLocaleString('pl-PL')}
+                    </td>
+                    <td className="p-4 text-muted-foreground">
+                      {new Date(ban.banned_until).toLocaleString('pl-PL')}
+                    </td>
+                    <td className="p-4">
+                      {isActive ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">
+                          Aktywny
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
+                          Wygasły
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {banHistory.length === 0 && (
+            <p className="text-center text-muted-foreground py-12">Brak historii banów</p>
           )}
         </div>
       )}
