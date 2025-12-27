@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 import SteamCallback from "./pages/SteamCallback";
 import Account from "./pages/Account";
 import MyTeam from "./pages/MyTeam";
+import StaticPage from "./pages/StaticPage";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMatches from "./pages/admin/AdminMatches";
@@ -23,6 +24,7 @@ import AdminSponsors from "./pages/admin/AdminSponsors";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminBracket from "./pages/admin/AdminBracket";
+import AdminPages from "./pages/admin/AdminPages";
 import CommentatorPanel from "./pages/admin/CommentatorPanel";
 import NotFound from "./pages/NotFound";
 
@@ -52,6 +54,11 @@ const App = () => (
             <Route path="/auth/steam-callback" element={<SteamCallback />} />
             <Route path="/konto" element={<Account />} />
             <Route path="/moja-druzyna" element={<MyTeam />} />
+            {/* Static Pages */}
+            <Route path="/regulamin" element={<StaticPage />} />
+            <Route path="/polityka-prywatnosci" element={<StaticPage />} />
+            <Route path="/faq" element={<StaticPage />} />
+            <Route path="/wsparcie" element={<StaticPage />} />
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
@@ -63,6 +70,7 @@ const App = () => (
               <Route path="sponsorzy" element={<AdminSponsors />} />
               <Route path="uzytkownicy" element={<AdminUsers />} />
               <Route path="ustawienia" element={<AdminSettings />} />
+              <Route path="strony" element={<AdminPages />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
