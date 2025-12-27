@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       matches: {
         Row: {
+          commentator1_id: string | null
+          commentator2_id: string | null
           created_at: string
           id: string
           round: string | null
@@ -29,6 +31,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          commentator1_id?: string | null
+          commentator2_id?: string | null
           created_at?: string
           id?: string
           round?: string | null
@@ -42,6 +46,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          commentator1_id?: string | null
+          commentator2_id?: string | null
           created_at?: string
           id?: string
           round?: string | null
@@ -232,6 +238,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bans: {
+        Row: {
+          banned_at: string
+          banned_by: string
+          banned_until: string
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_at?: string
+          banned_by: string
+          banned_until: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string
+          banned_until?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -266,7 +302,9 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_commentator: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_user_banned: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "owner" | "admin" | "commentator" | "support"

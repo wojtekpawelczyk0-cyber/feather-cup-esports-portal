@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus } from 'lucide-react';
+import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus, Ban, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,12 +23,22 @@ interface UserWithRole {
   email?: string;
 }
 
+interface UserBan {
+  id: string;
+  user_id: string;
+  banned_by: string;
+  reason: string | null;
+  banned_at: string;
+  banned_until: string;
+}
+
 interface AuthUser {
   id: string;
   email: string;
   created_at: string;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
+  ban?: UserBan | null;
 }
 
 const roleLabels: Record<AppRole, { label: string; color: string }> = {
@@ -47,8 +57,11 @@ const AdminUsers = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+  const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [banDuration, setBanDuration] = useState('1d');
+  const [banReason, setBanReason] = useState('');
   const [newRole, setNewRole] = useState({
     email: '',
     role: 'support' as AppRole,
@@ -226,7 +239,78 @@ const AdminUsers = () => {
     }
   };
 
-  const createUser = async () => {
+  const banUser = async () => {
+    if (!selectedUser) return;
+
+    setSaving(true);
+    try {
+      let banUntil: Date;
+      const now = new Date();
+
+      switch (banDuration) {
+        case '1h':
+          banUntil = new Date(now.getTime() + 60 * 60 * 1000);
+          break;
+        case '1d':
+          banUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          banUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          banUntil = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'permanent':
+          banUntil = new Date(now.getTime() + 100 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          banUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: {
+          action: 'ban_user',
+          userId: selectedUser.id,
+          banUntil: banUntil.toISOString(),
+          reason: banReason || null,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({ title: 'Użytkownik zbanowany!' });
+      setIsBanDialogOpen(false);
+      setBanDuration('1d');
+      setBanReason('');
+      setSelectedUser(null);
+      fetchAllUsers();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const unbanUser = async (userId: string) => {
+    if (!confirm('Czy na pewno chcesz odbanować tego użytkownika?')) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'unban_user', userId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({ title: 'Użytkownik odbanowany' });
+      fetchAllUsers();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    }
+  };
+
+
     if (!newUser.email || !newUser.password) {
       toast({ title: 'Podaj email i hasło', variant: 'destructive' });
       return;
@@ -475,6 +559,11 @@ const AdminUsers = () => {
                     <div className="flex items-center gap-3">
                       <Mail className="w-4 h-4 text-muted-foreground" />
                       <span className="font-semibold text-foreground">{user.email}</span>
+                      {user.ban && (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">
+                          Zbanowany do {new Date(user.ban.banned_until).toLocaleDateString('pl-PL')}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="p-4 text-muted-foreground">
@@ -487,6 +576,30 @@ const AdminUsers = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex justify-end gap-2">
+                      {user.ban ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => unbanUser(user.id)}
+                          title="Odbanuj"
+                          className="text-green-500"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setIsBanDialogOpen(true);
+                          }}
+                          title="Zbanuj"
+                          className="text-orange-500"
+                        >
+                          <Ban className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -518,6 +631,51 @@ const AdminUsers = () => {
           )}
         </div>
       )}
+
+      {/* Ban Dialog */}
+      <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Zbanuj użytkownika</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-muted-foreground text-sm">
+              Użytkownik: <strong>{selectedUser?.email}</strong>
+            </p>
+            <div className="space-y-2">
+              <Label>Czas trwania bana</Label>
+              <Select value={banDuration} onValueChange={setBanDuration}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">1 godzina</SelectItem>
+                  <SelectItem value="1d">1 dzień</SelectItem>
+                  <SelectItem value="7d">7 dni</SelectItem>
+                  <SelectItem value="30d">30 dni</SelectItem>
+                  <SelectItem value="permanent">Permanentny</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Powód (opcjonalnie)</Label>
+              <Input
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="Podaj powód bana"
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="ghost" onClick={() => {
+                setIsBanDialogOpen(false);
+                setBanReason('');
+              }}>Anuluj</Button>
+              <Button variant="destructive" onClick={banUser} disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Zbanuj
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Password Change Dialog */}
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>

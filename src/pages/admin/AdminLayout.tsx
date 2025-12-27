@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Trophy, Calendar, Image, Settings, 
-  Shield, Loader2, ChevronRight 
+  Shield, Loader2, ChevronRight, Mic 
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,9 +16,10 @@ interface UserRole {
 
 const adminLinks = [
   { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, roles: ['owner', 'admin', 'commentator', 'support'] },
-  { name: 'Mecze', path: '/admin/mecze', icon: Calendar, roles: ['owner', 'admin', 'commentator'] },
+  { name: 'Panel Komentatora', path: '/admin/komentator', icon: Mic, roles: ['owner', 'admin', 'commentator'] },
+  { name: 'Mecze', path: '/admin/mecze', icon: Calendar, roles: ['owner', 'admin'] },
   { name: 'Drużyny', path: '/admin/druzyny', icon: Users, roles: ['owner', 'admin'] },
-  { name: 'Wyniki', path: '/admin/wyniki', icon: Trophy, roles: ['owner', 'admin', 'commentator'] },
+  { name: 'Wyniki', path: '/admin/wyniki', icon: Trophy, roles: ['owner', 'admin'] },
   { name: 'Sponsorzy', path: '/admin/sponsorzy', icon: Image, roles: ['owner', 'admin'] },
   { name: 'Użytkownicy', path: '/admin/uzytkownicy', icon: Shield, roles: ['owner'] },
   { name: 'Ustawienia', path: '/admin/ustawienia', icon: Settings, roles: ['owner'] },
