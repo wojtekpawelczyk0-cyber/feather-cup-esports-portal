@@ -38,32 +38,100 @@ const playNotificationSound = () => {
   } catch {}
 };
 
-const triggerConfetti = () => {
-  const duration = 3000;
-  const end = Date.now() + duration;
+const triggerConfetti = (isFinal = false) => {
+  if (isFinal) {
+    // Epic finale confetti - multiple bursts
+    const duration = 6000;
+    const end = Date.now() + duration;
 
-  const frame = () => {
+    // Initial big explosion
     confetti({
-      particleCount: 3,
-      angle: 60,
-      spread: 55,
-      origin: { x: 0 },
-      colors: ['#ff6b35', '#f7c948', '#ffffff']
-    });
-    confetti({
-      particleCount: 3,
-      angle: 120,
-      spread: 55,
-      origin: { x: 1 },
-      colors: ['#ff6b35', '#f7c948', '#ffffff']
+      particleCount: 150,
+      spread: 100,
+      origin: { y: 0.6 },
+      colors: ['#FFD700', '#FFA500', '#FF6347', '#ffffff', '#ff6b35']
     });
 
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    }
-  };
+    setTimeout(() => {
+      confetti({
+        particleCount: 100,
+        angle: 60,
+        spread: 80,
+        origin: { x: 0 },
+        colors: ['#FFD700', '#FFA500', '#FF6347', '#ffffff']
+      });
+      confetti({
+        particleCount: 100,
+        angle: 120,
+        spread: 80,
+        origin: { x: 1 },
+        colors: ['#FFD700', '#FFA500', '#FF6347', '#ffffff']
+      });
+    }, 300);
 
-  frame();
+    const frame = () => {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 70,
+        origin: { x: 0 },
+        colors: ['#FFD700', '#FFA500', '#FF6347', '#ffffff', '#ff6b35']
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 70,
+        origin: { x: 1 },
+        colors: ['#FFD700', '#FFA500', '#FF6347', '#ffffff', '#ff6b35']
+      });
+      confetti({
+        particleCount: 3,
+        angle: 90,
+        spread: 120,
+        origin: { x: 0.5, y: 0.3 },
+        colors: ['#FFD700', '#FFA500']
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+
+    frame();
+  } else {
+    // Regular match confetti
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#ff6b35', '#f7c948', '#ffffff']
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#ff6b35', '#f7c948', '#ffffff']
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+
+    frame();
+  }
+};
+
+const isFinalMatch = (round: string | null) => {
+  if (!round) return false;
+  const lower = round.toLowerCase();
+  return lower.includes('finał') || lower.includes('final') || lower === 'grand final';
 };
 
 const Results = () => {
@@ -78,7 +146,7 @@ const Results = () => {
     newMatches.forEach(match => {
       const prevMatch = prevMatches.find(m => m.id === match.id);
       if (prevMatch && prevMatch.status === 'live' && match.status === 'finished') {
-        triggerConfetti();
+        triggerConfetti(isFinalMatch(match.round));
       }
     });
 
