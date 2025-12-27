@@ -16,11 +16,14 @@ export type Database = {
     Tables: {
       matches: {
         Row: {
+          bracket_position: number | null
           commentator1_id: string | null
           commentator2_id: string | null
           created_at: string
           id: string
+          next_match_id: string | null
           round: string | null
+          round_number: number | null
           scheduled_at: string
           status: Database["public"]["Enums"]["match_status"]
           stream_url: string | null
@@ -29,13 +32,17 @@ export type Database = {
           team2_id: string | null
           team2_score: number | null
           updated_at: string
+          winner_id: string | null
         }
         Insert: {
+          bracket_position?: number | null
           commentator1_id?: string | null
           commentator2_id?: string | null
           created_at?: string
           id?: string
+          next_match_id?: string | null
           round?: string | null
+          round_number?: number | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["match_status"]
           stream_url?: string | null
@@ -44,13 +51,17 @@ export type Database = {
           team2_id?: string | null
           team2_score?: number | null
           updated_at?: string
+          winner_id?: string | null
         }
         Update: {
+          bracket_position?: number | null
           commentator1_id?: string | null
           commentator2_id?: string | null
           created_at?: string
           id?: string
+          next_match_id?: string | null
           round?: string | null
+          round_number?: number | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["match_status"]
           stream_url?: string | null
@@ -59,8 +70,16 @@ export type Database = {
           team2_id?: string | null
           team2_score?: number | null
           updated_at?: string
+          winner_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "matches_next_match_id_fkey"
+            columns: ["next_match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matches_team1_id_fkey"
             columns: ["team1_id"]
@@ -71,6 +90,13 @@ export type Database = {
           {
             foreignKeyName: "matches_team2_id_fkey"
             columns: ["team2_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_id_fkey"
+            columns: ["winner_id"]
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
