@@ -82,14 +82,19 @@ export const Footer = () => {
           <div>
             <h4 className="font-semibold text-foreground mb-4">Informacje</h4>
             <ul className="space-y-2">
-              {['Regulamin', 'Polityka prywatności', 'FAQ', 'Wsparcie'].map((link) => (
-                <li key={link}>
-                  <a
-                    href="#"
+              {[
+                { name: 'Regulamin', path: '/regulamin' },
+                { name: 'Polityka prywatności', path: '/polityka-prywatnosci' },
+                { name: 'FAQ', path: '/faq' },
+                { name: 'Wsparcie', path: '/wsparcie' }
+              ].map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.path}
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
-                    {link}
-                  </a>
+                    {link.name}
+                  </Link>
                 </li>
               ))}
             </ul>

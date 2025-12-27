@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Trophy, Calendar, Image, Settings, 
-  Shield, Loader2, ChevronRight, Mic, GitBranch 
+  Shield, Loader2, ChevronRight, Mic, GitBranch, FileText 
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +23,7 @@ const adminLinks = [
   { name: 'Wyniki', path: '/admin/wyniki', icon: Trophy, roles: ['owner', 'admin'] },
   { name: 'Sponsorzy', path: '/admin/sponsorzy', icon: Image, roles: ['owner', 'admin'] },
   { name: 'Użytkownicy', path: '/admin/uzytkownicy', icon: Shield, roles: ['owner'] },
+  { name: 'Strony', path: '/admin/strony', icon: FileText, roles: ['owner'] },
   { name: 'Ustawienia', path: '/admin/ustawienia', icon: Settings, roles: ['owner'] },
 ];
 
