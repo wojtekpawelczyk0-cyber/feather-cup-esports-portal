@@ -17,11 +17,10 @@ interface Stats {
   completedMatches: number;
 }
 
-interface StripeBalance {
-  available: { amount: number; currency: string }[];
-  pending: { amount: number; currency: string }[];
-  earnings30d: number;
-  chargesCount: number;
+interface TournamentEarnings {
+  paidTeams: number;
+  totalEarnings: number;
+  entryFee: number;
 }
 
 interface DailyVisits {
@@ -41,15 +40,18 @@ const AdminDashboard = () => {
     completedMatches: 0,
   });
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
-  const [stripeBalance, setStripeBalance] = useState<StripeBalance | null>(null);
+  const [tournamentEarnings, setTournamentEarnings] = useState<TournamentEarnings | null>(null);
+
   const [dailyVisits, setDailyVisits] = useState<DailyVisits[]>([]);
-  const [loadingBalance, setLoadingBalance] = useState(false);
+
+  // Entry fee in grosze (100 PLN = 10000 groszy)
+  const ENTRY_FEE = 10000;
 
   useEffect(() => {
     fetchStats();
     fetchRecentMatches();
     if (isOwner) {
-      fetchStripeBalance();
+      fetchTournamentEarnings();
       fetchDailyVisits();
     }
   }, [isOwner]);
@@ -89,24 +91,23 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchStripeBalance = async () => {
-    setLoadingBalance(true);
+  const fetchTournamentEarnings = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data, error } = await supabase.functions.invoke('get-stripe-balance', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('is_paid', true);
 
       if (error) throw error;
-      setStripeBalance(data);
+
+      const paidTeams = data?.length || 0;
+      setTournamentEarnings({
+        paidTeams,
+        totalEarnings: paidTeams * ENTRY_FEE,
+        entryFee: ENTRY_FEE,
+      });
     } catch (error) {
-      console.error('Error fetching Stripe balance:', error);
-    } finally {
-      setLoadingBalance(false);
+      console.error('Error fetching tournament earnings:', error);
     }
   };
 
@@ -227,51 +228,38 @@ const AdminDashboard = () => {
             )}
           </div>
 
-          {/* Stripe Balance */}
+          {/* Tournament Earnings */}
           <div className="glass-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="w-5 h-5 text-green-400" />
-              <h2 className="text-lg font-semibold text-foreground">Saldo Stripe</h2>
+              <h2 className="text-lg font-semibold text-foreground">Wpływy z turnieju</h2>
             </div>
-            {loadingBalance ? (
-              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Ładowanie...
-              </div>
-            ) : stripeBalance ? (
+            {tournamentEarnings ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                    <p className="text-sm text-muted-foreground mb-1">Dostępne</p>
-                    <p className="text-2xl font-bold text-green-400">
-                      {stripeBalance.available.length > 0
-                        ? formatCurrency(stripeBalance.available[0].amount, stripeBalance.available[0].currency)
-                        : '0 PLN'}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                    <p className="text-sm text-muted-foreground mb-1">Oczekujące</p>
-                    <p className="text-2xl font-bold text-yellow-400">
-                      {stripeBalance.pending.length > 0
-                        ? formatCurrency(stripeBalance.pending[0].amount, stripeBalance.pending[0].currency)
-                        : '0 PLN'}
-                    </p>
-                  </div>
+                <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                  <p className="text-sm text-muted-foreground mb-1">Łączne wpływy</p>
+                  <p className="text-3xl font-bold text-green-400">
+                    {formatCurrency(tournamentEarnings.totalEarnings, 'pln')}
+                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-1">Zarobki (30 dni)</p>
-                  <div className="flex items-baseline gap-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                    <p className="text-sm text-muted-foreground mb-1">Opłacone drużyny</p>
                     <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(stripeBalance.earnings30d, 'pln')}
+                      {tournamentEarnings.paidTeams}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      ({stripeBalance.chargesCount} transakcji)
+                  </div>
+                  <div className="p-4 rounded-xl bg-secondary/50 border border-border/50">
+                    <p className="text-sm text-muted-foreground mb-1">Wpisowe</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {formatCurrency(tournamentEarnings.entryFee, 'pln')}
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Nie udało się pobrać danych ze Stripe
+                Ładowanie...
               </div>
             )}
           </div>
