@@ -310,7 +310,7 @@ const AdminUsers = () => {
     }
   };
 
-
+  const createUser = async () => {
     if (!newUser.email || !newUser.password) {
       toast({ title: 'Podaj email i hasło', variant: 'destructive' });
       return;
