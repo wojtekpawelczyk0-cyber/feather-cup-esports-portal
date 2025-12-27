@@ -15,6 +15,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  userRoles: string[];
   signOut: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,9 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
+            fetchUserRoles(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setUserRoles([]);
         }
       }
     );
@@ -57,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchUserRoles(session.user.id);
       }
       setLoading(false);
     });
@@ -78,6 +83,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchUserRoles = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error fetching user roles:', error);
+    } else {
+      setUserRoles(data?.map(r => r.role) || []);
+    }
+  };
+
   const refreshProfile = async () => {
     if (user) {
       await fetchProfile(user.id);
@@ -88,6 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    setUserRoles([]);
     setProfile(null);
   };
 
@@ -149,6 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         profile,
         loading,
+        userRoles,
         signOut,
         signInWithEmail,
         signUpWithEmail,
