@@ -60,10 +60,10 @@ serve(async (req) => {
     if (successfulPayment) {
       logStep("Found successful payment", { sessionId: successfulPayment.id });
       
-      // Update team's is_paid status and set to registered
+      // Update team's is_paid status, set to registered, and record payment date
       const { error: updateError } = await supabaseClient
         .from("teams")
-        .update({ is_paid: true, status: "registered" })
+        .update({ is_paid: true, status: "registered", paid_at: new Date().toISOString() })
         .eq("id", team_id);
 
       if (updateError) {
