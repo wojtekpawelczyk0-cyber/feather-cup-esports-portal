@@ -211,6 +211,7 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string | null
+          paid_at: string | null
           status: Database["public"]["Enums"]["team_status"]
           updated_at: string
         }
@@ -222,6 +223,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id?: string | null
+          paid_at?: string | null
           status?: Database["public"]["Enums"]["team_status"]
           updated_at?: string
         }
@@ -233,6 +235,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string | null
+          paid_at?: string | null
           status?: Database["public"]["Enums"]["team_status"]
           updated_at?: string
         }

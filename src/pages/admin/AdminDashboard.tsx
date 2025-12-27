@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Calendar, Users, Trophy, TrendingUp, Clock, DollarSign, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTournamentSettings } from '@/hooks/useTournamentSettings';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 
 interface Stats {
   totalTeams: number;
@@ -17,8 +18,14 @@ interface Stats {
   completedMatches: number;
 }
 
+interface PaidTeam {
+  id: string;
+  name: string;
+  paid_at: string;
+}
+
 interface TournamentEarnings {
-  paidTeams: number;
+  paidTeams: PaidTeam[];
   totalEarnings: number;
   entryFee: number;
 }
@@ -30,6 +37,7 @@ interface DailyVisits {
 
 const AdminDashboard = () => {
   const { userRoles } = useAuth();
+  const { settings } = useTournamentSettings();
   const isOwner = userRoles.includes('owner');
   
   const [stats, setStats] = useState<Stats>({
@@ -41,11 +49,10 @@ const AdminDashboard = () => {
   });
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
   const [tournamentEarnings, setTournamentEarnings] = useState<TournamentEarnings | null>(null);
-
   const [dailyVisits, setDailyVisits] = useState<DailyVisits[]>([]);
 
-  // Entry fee in grosze (100 PLN = 10000 groszy)
-  const ENTRY_FEE = 10000;
+  // Entry fee from settings (in grosze)
+  const entryFeeInGrosze = parseInt(settings.entry_fee || '50') * 100;
 
   useEffect(() => {
     fetchStats();
@@ -54,7 +61,7 @@ const AdminDashboard = () => {
       fetchTournamentEarnings();
       fetchDailyVisits();
     }
-  }, [isOwner]);
+  }, [isOwner, entryFeeInGrosze]);
 
   const fetchStats = async () => {
     try {
@@ -95,16 +102,22 @@ const AdminDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('teams')
-        .select('id')
-        .eq('is_paid', true);
+        .select('id, name, paid_at')
+        .eq('is_paid', true)
+        .order('paid_at', { ascending: false });
 
       if (error) throw error;
 
-      const paidTeams = data?.length || 0;
+      const paidTeams = (data || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        paid_at: t.paid_at || '',
+      }));
+
       setTournamentEarnings({
         paidTeams,
-        totalEarnings: paidTeams * ENTRY_FEE,
-        entryFee: ENTRY_FEE,
+        totalEarnings: paidTeams.length * entryFeeInGrosze,
+        entryFee: entryFeeInGrosze,
       });
     } catch (error) {
       console.error('Error fetching tournament earnings:', error);
@@ -122,10 +135,8 @@ const AdminDashboard = () => {
         .gte('visited_at', sevenDaysAgo.toISOString());
 
       if (data) {
-        // Group by day
         const visitsByDay: Record<string, number> = {};
         
-        // Initialize last 7 days
         for (let i = 6; i >= 0; i--) {
           const date = new Date();
           date.setDate(date.getDate() - i);
@@ -133,7 +144,6 @@ const AdminDashboard = () => {
           visitsByDay[dateStr] = 0;
         }
 
-        // Count visits
         data.forEach((visit) => {
           const dateStr = new Date(visit.visited_at).toISOString().split('T')[0];
           if (visitsByDay[dateStr] !== undefined) {
@@ -182,7 +192,7 @@ const AdminDashboard = () => {
         <p className="text-muted-foreground">Przegląd turnieju Feather Cup</p>
       </div>
 
-      {/* Owner Stats - Stripe & Analytics */}
+      {/* Owner Stats - Analytics & Earnings */}
       {isOwner && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Daily Visits Chart */}
@@ -246,7 +256,7 @@ const AdminDashboard = () => {
                   <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
                     <p className="text-sm text-muted-foreground mb-1">Opłacone drużyny</p>
                     <p className="text-2xl font-bold text-primary">
-                      {tournamentEarnings.paidTeams}
+                      {tournamentEarnings.paidTeams.length}
                     </p>
                   </div>
                   <div className="p-4 rounded-xl bg-secondary/50 border border-border/50">
@@ -262,6 +272,47 @@ const AdminDashboard = () => {
                 Ładowanie...
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Payment History - Only for owners */}
+      {isOwner && tournamentEarnings && tournamentEarnings.paidTeams.length > 0 && (
+        <div className="glass-card p-6 mb-8">
+          <h2 className="text-xl font-bold text-foreground mb-4">Historia płatności</h2>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            {tournamentEarnings.paidTeams.map((team) => (
+              <div
+                key={team.id}
+                className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 border border-border/50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Trophy className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{team.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {team.paid_at 
+                        ? new Date(team.paid_at).toLocaleString('pl-PL', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'Data nieznana'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-green-400">
+                    {formatCurrency(entryFeeInGrosze, 'pln')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Wpisowe</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
