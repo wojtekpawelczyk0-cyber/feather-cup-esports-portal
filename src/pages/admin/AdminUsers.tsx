@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Plus, Trash2, Shield } from 'lucide-react';
+import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,14 @@ interface UserWithRole {
   email?: string;
 }
 
+interface AuthUser {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
+}
+
 const roleLabels: Record<AppRole, { label: string; color: string }> = {
   owner: { label: 'Owner', color: 'bg-red-500/20 text-red-400' },
   admin: { label: 'Admin', color: 'bg-orange-500/20 text-orange-400' },
@@ -35,14 +43,26 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userRoles, setUserRoles] = useState<UserWithRole[]>([]);
+  const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState({
     email: '',
     role: 'support' as AppRole,
   });
+  const [newUser, setNewUser] = useState({
+    email: '',
+    password: '',
+    displayName: '',
+  });
+  const [activeTab, setActiveTab] = useState<'roles' | 'users'>('roles');
 
   useEffect(() => {
     fetchUserRoles();
+    fetchAllUsers();
   }, []);
 
   const fetchUserRoles = async () => {
@@ -55,7 +75,6 @@ const AdminUsers = () => {
 
       if (error) throw error;
 
-      // Fetch profiles separately
       const userIds = (data || []).map((r: any) => r.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
@@ -76,6 +95,19 @@ const AdminUsers = () => {
     }
   };
 
+  const fetchAllUsers = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'list_users' },
+      });
+
+      if (error) throw error;
+      setAllUsers(data.users || []);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
   const addRole = async () => {
     if (!newRole.email.trim()) {
       toast({ title: 'Podaj email użytkownika', variant: 'destructive' });
@@ -84,15 +116,12 @@ const AdminUsers = () => {
 
     setSaving(true);
     try {
-      // Find user by email in profiles
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('user_id')
         .ilike('display_name', newRole.email.trim())
         .maybeSingle();
 
-      // If not found by name, try to find in auth (this requires admin access)
-      // For now, we'll just show an error
       if (!profileData) {
         toast({ 
           title: 'Użytkownik nie znaleziony', 
@@ -143,6 +172,96 @@ const AdminUsers = () => {
     }
   };
 
+  const updatePassword = async () => {
+    if (!selectedUser || !newPassword) {
+      toast({ title: 'Podaj nowe hasło', variant: 'destructive' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({ title: 'Hasło musi mieć minimum 6 znaków', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { 
+          action: 'update_password',
+          userId: selectedUser.id,
+          password: newPassword 
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({ title: 'Hasło zmienione!' });
+      setIsPasswordDialogOpen(false);
+      setNewPassword('');
+      setSelectedUser(null);
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!confirm('Czy na pewno chcesz usunąć tego użytkownika? Ta akcja jest nieodwracalna!')) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'delete_user', userId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({ title: 'Użytkownik usunięty' });
+      fetchAllUsers();
+      fetchUserRoles();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const createUser = async () => {
+    if (!newUser.email || !newUser.password) {
+      toast({ title: 'Podaj email i hasło', variant: 'destructive' });
+      return;
+    }
+
+    if (newUser.password.length < 6) {
+      toast({ title: 'Hasło musi mieć minimum 6 znaków', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { 
+          action: 'create_user',
+          email: newUser.email,
+          password: newUser.password,
+          displayName: newUser.displayName || newUser.email.split('@')[0],
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({ title: 'Użytkownik utworzony!' });
+      setIsCreateUserDialogOpen(false);
+      setNewUser({ email: '', password: '', displayName: '' });
+      fetchAllUsers();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -158,112 +277,280 @@ const AdminUsers = () => {
           <h1 className="text-3xl font-bold text-foreground">Użytkownicy i Role</h1>
           <p className="text-muted-foreground">Zarządzaj uprawnieniami użytkowników</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="hero">
-              <Plus className="w-4 h-4 mr-2" />
-              Dodaj rolę
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border">
-            <DialogHeader>
-              <DialogTitle>Dodaj rolę użytkownikowi</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label>Nick użytkownika</Label>
-                <Input
-                  value={newRole.email}
-                  onChange={(e) => setNewRole({ ...newRole, email: e.target.value })}
-                  placeholder="Wpisz nick użytkownika"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Rola</Label>
-                <Select
-                  value={newRole.role}
-                  onValueChange={(v) => setNewRole({ ...newRole, role: v as AppRole })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owner">Owner</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="commentator">Komentator</SelectItem>
-                    <SelectItem value="support">Support</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Anuluj</Button>
-                <Button variant="hero" onClick={addRole} disabled={saving}>
-                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Dodaj
+        <div className="flex gap-2">
+          {activeTab === 'users' && (
+            <Dialog open={isCreateUserDialogOpen} onOpenChange={setIsCreateUserDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="glass">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Nowy użytkownik
                 </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Roles Table */}
-      <div className="glass-card overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left p-4 text-muted-foreground font-medium">Użytkownik</th>
-              <th className="text-left p-4 text-muted-foreground font-medium">Rola</th>
-              <th className="text-left p-4 text-muted-foreground font-medium">Data dodania</th>
-              <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
-            </tr>
-          </thead>
-          <tbody>
-            {userRoles.map((ur) => (
-              <tr key={ur.id} className="border-b border-border/50 hover:bg-secondary/20">
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                      {ur.profile?.avatar_url ? (
-                        <img src={ur.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Shield className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <span className="font-semibold text-foreground">
-                      {ur.profile?.display_name || 'Nieznany'}
-                    </span>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>Utwórz nowego użytkownika</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      placeholder="email@example.com"
+                    />
                   </div>
-                </td>
-                <td className="p-4">
-                  <span className={cn(
-                    'px-3 py-1 rounded-full text-xs font-semibold',
-                    roleLabels[ur.role].color
-                  )}>
-                    {roleLabels[ur.role].label}
-                  </span>
-                </td>
-                <td className="p-4 text-muted-foreground">
-                  {new Date(ur.created_at).toLocaleDateString('pl-PL')}
-                </td>
-                <td className="p-4">
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRole(ur.id)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
+                  <div className="space-y-2">
+                    <Label>Hasło</Label>
+                    <Input
+                      type="password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      placeholder="Min. 6 znaków"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nick (opcjonalnie)</Label>
+                    <Input
+                      value={newUser.displayName}
+                      onChange={(e) => setNewUser({ ...newUser, displayName: e.target.value })}
+                      placeholder="Nick użytkownika"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <Button variant="ghost" onClick={() => setIsCreateUserDialogOpen(false)}>Anuluj</Button>
+                    <Button variant="hero" onClick={createUser} disabled={saving}>
+                      {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Utwórz
                     </Button>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {userRoles.length === 0 && (
-          <p className="text-center text-muted-foreground py-12">Brak ról użytkowników</p>
-        )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+          {activeTab === 'roles' && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="hero">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Dodaj rolę
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>Dodaj rolę użytkownikowi</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>Nick użytkownika</Label>
+                    <Input
+                      value={newRole.email}
+                      onChange={(e) => setNewRole({ ...newRole, email: e.target.value })}
+                      placeholder="Wpisz nick użytkownika"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rola</Label>
+                    <Select
+                      value={newRole.role}
+                      onValueChange={(v) => setNewRole({ ...newRole, role: v as AppRole })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">Owner</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="commentator">Komentator</SelectItem>
+                        <SelectItem value="support">Support</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Anuluj</Button>
+                    <Button variant="hero" onClick={addRole} disabled={saving}>
+                      {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Dodaj
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <Button
+          variant={activeTab === 'roles' ? 'hero' : 'ghost'}
+          onClick={() => setActiveTab('roles')}
+        >
+          <Shield className="w-4 h-4 mr-2" />
+          Role
+        </Button>
+        <Button
+          variant={activeTab === 'users' ? 'hero' : 'ghost'}
+          onClick={() => setActiveTab('users')}
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          Wszyscy użytkownicy
+        </Button>
+      </div>
+
+      {activeTab === 'roles' && (
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left p-4 text-muted-foreground font-medium">Użytkownik</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Rola</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Data dodania</th>
+                <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userRoles.map((ur) => (
+                <tr key={ur.id} className="border-b border-border/50 hover:bg-secondary/20">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                        {ur.profile?.avatar_url ? (
+                          <img src={ur.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Shield className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <span className="font-semibold text-foreground">
+                        {ur.profile?.display_name || 'Nieznany'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={cn(
+                      'px-3 py-1 rounded-full text-xs font-semibold',
+                      roleLabels[ur.role].color
+                    )}>
+                      {roleLabels[ur.role].label}
+                    </span>
+                  </td>
+                  <td className="p-4 text-muted-foreground">
+                    {new Date(ur.created_at).toLocaleDateString('pl-PL')}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeRole(ur.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {userRoles.length === 0 && (
+            <p className="text-center text-muted-foreground py-12">Brak ról użytkowników</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left p-4 text-muted-foreground font-medium">Email</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Ostatnie logowanie</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Data rejestracji</th>
+                <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allUsers.map((user) => (
+                <tr key={user.id} className="border-b border-border/50 hover:bg-secondary/20">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-semibold text-foreground">{user.email}</span>
+                    </div>
+                  </td>
+                  <td className="p-4 text-muted-foreground">
+                    {user.last_sign_in_at 
+                      ? new Date(user.last_sign_in_at).toLocaleString('pl-PL')
+                      : 'Nigdy'}
+                  </td>
+                  <td className="p-4 text-muted-foreground">
+                    {new Date(user.created_at).toLocaleDateString('pl-PL')}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsPasswordDialogOpen(true);
+                        }}
+                        title="Zmień hasło"
+                      >
+                        <Key className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteUser(user.id)}
+                        className="text-destructive"
+                        title="Usuń użytkownika"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {allUsers.length === 0 && (
+            <p className="text-center text-muted-foreground py-12">Brak użytkowników</p>
+          )}
+        </div>
+      )}
+
+      {/* Password Change Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Zmień hasło użytkownika</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-muted-foreground text-sm">
+              Użytkownik: <strong>{selectedUser?.email}</strong>
+            </p>
+            <div className="space-y-2">
+              <Label>Nowe hasło</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min. 6 znaków"
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="ghost" onClick={() => {
+                setIsPasswordDialogOpen(false);
+                setNewPassword('');
+              }}>Anuluj</Button>
+              <Button variant="hero" onClick={updatePassword} disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Zmień hasło
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
