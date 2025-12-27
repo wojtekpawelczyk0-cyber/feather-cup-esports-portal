@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Mic, MicOff, Play, Save } from 'lucide-react';
+import { Loader2, Mic, MicOff, Play, Save, Trophy, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,6 +35,14 @@ interface Profile {
   display_name: string | null;
 }
 
+interface CommentatorStats {
+  userId: string;
+  displayName: string;
+  finishedCount: number;
+  upcomingCount: number;
+  liveCount: number;
+}
+
 const CommentatorPanel = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -45,14 +52,18 @@ const CommentatorPanel = () => {
   const [myLiveMatch, setMyLiveMatch] = useState<Match | null>(null);
   const [commentatorProfiles, setCommentatorProfiles] = useState<Map<string, Profile>>(new Map());
   const [scores, setScores] = useState({ team1: 0, team2: 0 });
+  const [commentatorStats, setCommentatorStats] = useState<CommentatorStats[]>([]);
+  const [myStats, setMyStats] = useState<CommentatorStats | null>(null);
 
   useEffect(() => {
     fetchMatches();
+    fetchStats();
 
     const channel = supabase
       .channel('commentator-matches')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
         fetchMatches();
+        fetchStats();
       })
       .subscribe();
 
@@ -60,6 +71,67 @@ const CommentatorPanel = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  const fetchStats = async () => {
+    if (!user) return;
+
+    try {
+      // Get all matches to calculate stats
+      const { data: allMatches, error } = await supabase
+        .from('matches')
+        .select('id, status, commentator1_id, commentator2_id');
+
+      if (error) throw error;
+
+      // Collect all commentator IDs
+      const commentatorMap = new Map<string, { finished: number; upcoming: number; live: number }>();
+      
+      for (const match of allMatches || []) {
+        const commentators = [match.commentator1_id, match.commentator2_id].filter(Boolean);
+        for (const cId of commentators) {
+          if (!commentatorMap.has(cId)) {
+            commentatorMap.set(cId, { finished: 0, upcoming: 0, live: 0 });
+          }
+          const stats = commentatorMap.get(cId)!;
+          if (match.status === 'finished') stats.finished++;
+          else if (match.status === 'scheduled') stats.upcoming++;
+          else if (match.status === 'live') stats.live++;
+        }
+      }
+
+      // Get profiles for all commentators
+      const commentatorIds = Array.from(commentatorMap.keys());
+      if (commentatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', commentatorIds);
+
+        const profilesMap = new Map((profiles || []).map((p: any) => [p.user_id, p.display_name]));
+        
+        const statsArray: CommentatorStats[] = [];
+        for (const [userId, counts] of commentatorMap.entries()) {
+          statsArray.push({
+            userId,
+            displayName: profilesMap.get(userId) || 'Nieznany',
+            finishedCount: counts.finished,
+            upcomingCount: counts.upcoming,
+            liveCount: counts.live,
+          });
+        }
+
+        // Sort by finished matches
+        statsArray.sort((a, b) => b.finishedCount - a.finishedCount);
+        setCommentatorStats(statsArray);
+
+        // Find my stats
+        const myStatsData = statsArray.find(s => s.userId === user.id);
+        setMyStats(myStatsData || null);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const fetchMatches = async () => {
     if (!user) return;
@@ -281,6 +353,91 @@ const CommentatorPanel = () => {
         <h1 className="text-3xl font-bold text-foreground">Panel Komentatora</h1>
         <p className="text-muted-foreground">Zarządzaj swoimi meczami i wynikami</p>
       </div>
+
+      {/* My Stats */}
+      {myStats && (
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="glass-card p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-green-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{myStats.finishedCount}</p>
+              <p className="text-sm text-muted-foreground">Skomentowanych meczy</p>
+            </div>
+          </div>
+          <div className="glass-card p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+              <Mic className="w-6 h-6 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{myStats.upcomingCount}</p>
+              <p className="text-sm text-muted-foreground">Zaplanowanych</p>
+            </div>
+          </div>
+          <div className="glass-card p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+              <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{myStats.liveCount}</p>
+              <p className="text-sm text-muted-foreground">Na żywo</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Commentators Stats */}
+      {commentatorStats.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            Ranking komentatorów
+          </h2>
+          <div className="glass-card overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left p-4 text-muted-foreground font-medium">#</th>
+                  <th className="text-left p-4 text-muted-foreground font-medium">Komentator</th>
+                  <th className="text-center p-4 text-muted-foreground font-medium">Skomentowane</th>
+                  <th className="text-center p-4 text-muted-foreground font-medium">Zaplanowane</th>
+                  <th className="text-center p-4 text-muted-foreground font-medium">Na żywo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {commentatorStats.slice(0, 10).map((stat, index) => (
+                  <tr key={stat.userId} className={cn(
+                    "border-b border-border/50",
+                    stat.userId === user?.id && "bg-primary/10"
+                  )}>
+                    <td className="p-4 font-bold text-muted-foreground">{index + 1}</td>
+                    <td className="p-4 font-semibold text-foreground">
+                      {stat.displayName}
+                      {stat.userId === user?.id && <span className="ml-2 text-xs text-primary">(Ty)</span>}
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="px-2 py-1 rounded-full text-sm font-semibold bg-green-500/20 text-green-400">
+                        {stat.finishedCount}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="px-2 py-1 rounded-full text-sm font-semibold bg-blue-500/20 text-blue-400">
+                        {stat.upcomingCount}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="px-2 py-1 rounded-full text-sm font-semibold bg-red-500/20 text-red-400">
+                        {stat.liveCount}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Active Live Match */}
       {myLiveMatch && (
