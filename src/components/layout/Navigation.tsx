@@ -36,11 +36,11 @@ export const Navigation = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)] transition-shadow duration-300 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
               {settings.site_logo_url ? (
                 <img src={settings.site_logo_url} alt="Logo" className="w-full h-full object-cover" />
               ) : (
-                <Trophy className="w-5 h-5 text-primary-foreground" />
+                <Trophy className="w-5 h-5 text-primary" />
               )}
             </div>
             <span className="text-xl font-bold text-foreground hidden sm:block">
