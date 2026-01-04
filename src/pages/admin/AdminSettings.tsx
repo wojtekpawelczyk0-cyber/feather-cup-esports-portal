@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube, Image } from 'lucide-react';
+import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube, Image, Globe, FileImage } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,11 @@ const AdminSettings = () => {
     hero_subtitle: 'Dołącz do największego turnieju esportowego tego roku. Rywalizuj z najlepszymi, zdobywaj nagrody i stań się legendą.',
     // Branding
     site_logo_url: '',
+    // SEO settings
+    site_title: 'Feather Cup - Turniej CS2',
+    site_description: 'Feather Cup - profesjonalny turniej CS2. Dołącz do rywalizacji i wygraj nagrody!',
+    favicon_url: '',
+    og_image_url: '',
     // Footer settings
     footer_description: 'Profesjonalny turniej esportowy z nagrodami. Dołącz do najlepszych graczy i pokaż swoje umiejętności na arenie Feather Cup.',
     footer_twitter: '',
@@ -238,6 +243,94 @@ const AdminSettings = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* SEO Settings */}
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Globe className="w-5 h-5 text-primary" />
+            SEO / Przeglądarka
+          </h2>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="site_title">Tytuł strony (w karcie przeglądarki)</Label>
+              <Input
+                id="site_title"
+                value={settings.site_title}
+                onChange={(e) => setSettings({ ...settings, site_title: e.target.value })}
+                placeholder="Feather Cup - Turniej CS2"
+              />
+              <p className="text-xs text-muted-foreground">
+                Wyświetlany w karcie przeglądarki i wynikach wyszukiwania Google.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="site_description">Meta opis (SEO)</Label>
+              <Textarea
+                id="site_description"
+                value={settings.site_description}
+                onChange={(e) => setSettings({ ...settings, site_description: e.target.value })}
+                placeholder="Opis strony dla wyszukiwarek..."
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                Wyświetlany w wynikach wyszukiwania Google. Max 160 znaków.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="favicon_url" className="flex items-center gap-2">
+                <FileImage className="w-4 h-4 text-muted-foreground" />
+                URL favicon (ikona w karcie)
+              </Label>
+              <Input
+                id="favicon_url"
+                value={settings.favicon_url}
+                onChange={(e) => setSettings({ ...settings, favicon_url: e.target.value })}
+                placeholder="https://example.com/favicon.ico"
+              />
+              <p className="text-xs text-muted-foreground">
+                Mała ikonka wyświetlana w karcie przeglądarki. Zalecany format: .ico, .png (32x32 lub 64x64).
+              </p>
+              {settings.favicon_url && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-sm text-muted-foreground">Podgląd:</span>
+                  <img 
+                    src={settings.favicon_url} 
+                    alt="Favicon preview" 
+                    className="w-6 h-6 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="og_image_url">URL obrazka Open Graph (udostępnianie)</Label>
+              <Input
+                id="og_image_url"
+                value={settings.og_image_url}
+                onChange={(e) => setSettings({ ...settings, og_image_url: e.target.value })}
+                placeholder="https://example.com/og-image.jpg"
+              />
+              <p className="text-xs text-muted-foreground">
+                Obrazek wyświetlany przy udostępnianiu strony na social media. Zalecany rozmiar: 1200x630.
+              </p>
+              {settings.og_image_url && (
+                <div className="mt-2 p-3 rounded-xl bg-secondary/50">
+                  <p className="text-sm text-muted-foreground mb-2">Podgląd OG image:</p>
+                  <img 
+                    src={settings.og_image_url} 
+                    alt="OG Image preview" 
+                    className="max-w-full max-h-40 object-contain rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

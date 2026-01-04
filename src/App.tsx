@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
+import { useDynamicSEO } from "@/hooks/useDynamicSEO";
 import Index from "./pages/Index";
 import Matches from "./pages/Matches";
 import Results from "./pages/Results";
@@ -35,12 +36,18 @@ const PageTracker = () => {
   return null;
 };
 
+const SEOManager = () => {
+  useDynamicSEO();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
           <PageTracker />
+          <SEOManager />
           <Toaster />
           <Sonner />
           <Routes>
