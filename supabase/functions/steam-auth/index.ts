@@ -154,19 +154,43 @@ Deno.serve(async (req) => {
           throw new Error('To konto Steam jest już połączone z innym użytkownikiem')
         }
         
-        // Update profile with Steam data
-        const { error: updateError } = await supabase
+        // Check if profile exists for this user
+        const { data: existingProfile } = await supabase
           .from('profiles')
-          .update({
-            steam_id: steamId,
-            display_name: player.personaname,
-            avatar_url: player.avatarfull,
-          })
+          .select('id')
           .eq('user_id', linkUserId)
+          .maybeSingle()
+        
+        if (existingProfile) {
+          // Update existing profile
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              steam_id: steamId,
+              display_name: player.personaname,
+              avatar_url: player.avatarfull,
+            })
+            .eq('user_id', linkUserId)
 
-        if (updateError) {
-          console.error('Update profile error:', updateError)
-          throw updateError
+          if (updateError) {
+            console.error('Update profile error:', updateError)
+            throw updateError
+          }
+        } else {
+          // Create new profile with Steam data
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: linkUserId,
+              steam_id: steamId,
+              display_name: player.personaname,
+              avatar_url: player.avatarfull,
+            })
+
+          if (insertError) {
+            console.error('Insert profile error:', insertError)
+            throw insertError
+          }
         }
 
         return new Response(JSON.stringify({
