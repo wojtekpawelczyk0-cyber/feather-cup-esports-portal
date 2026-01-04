@@ -146,12 +146,20 @@ Deno.serve(async (req) => {
         // Check if Steam ID is already linked to another account
         const { data: existingLink } = await supabase
           .from('profiles')
-          .select('user_id')
+          .select('user_id, display_name')
           .eq('steam_id', steamId)
           .maybeSingle()
         
         if (existingLink && existingLink.user_id !== linkUserId) {
-          throw new Error('To konto Steam jest już połączone z innym użytkownikiem')
+          // Check if this is a Steam-only account (email like steam_xxx@feathercup.local)
+          const { data: existingUser } = await supabase.auth.admin.getUserById(existingLink.user_id)
+          const isSteamOnlyAccount = existingUser?.user?.email?.startsWith('steam_') && existingUser?.user?.email?.endsWith('@feathercup.local')
+          
+          if (isSteamOnlyAccount) {
+            throw new Error(`To konto Steam było już wcześniej używane do logowania. Zaloguj się przez Steam zamiast łączyć konto. Jeśli chcesz połączyć to konto Steam z obecnym kontem email, skontaktuj się z administratorem.`)
+          } else {
+            throw new Error(`To konto Steam jest już połączone z innym użytkownikiem (${existingLink.display_name || 'Nieznany'}).`)
+          }
         }
         
         // Check if profile exists for this user

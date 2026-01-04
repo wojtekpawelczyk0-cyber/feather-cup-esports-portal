@@ -10,6 +10,11 @@ interface TournamentSettings {
   tournament_days: string;
   entry_fee: string;
   site_logo_url: string;
+  // SEO settings
+  site_title: string;
+  site_description: string;
+  favicon_url: string;
+  og_image_url: string;
 }
 
 const defaultSettings: TournamentSettings = {
@@ -21,6 +26,11 @@ const defaultSettings: TournamentSettings = {
   tournament_days: '7',
   entry_fee: '50',
   site_logo_url: '',
+  // SEO defaults
+  site_title: 'Feather Cup - Turniej CS2',
+  site_description: 'Feather Cup - profesjonalny turniej CS2. Dołącz do rywalizacji i wygraj nagrody!',
+  favicon_url: '',
+  og_image_url: '',
 };
 
 export const useTournamentSettings = () => {
