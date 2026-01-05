@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
+import FileUpload from '@/components/admin/FileUpload';
 interface Setting {
   id: string;
   key: string;
@@ -212,37 +212,17 @@ const AdminSettings = () => {
           </h2>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="site_logo_url">URL logo turnieju (zamieni ikonę pucharu)</Label>
-              <Input
-                id="site_logo_url"
+              <Label>Logo turnieju (zamieni ikonę pucharu)</Label>
+              <FileUpload
                 value={settings.site_logo_url}
-                onChange={(e) => setSettings({ ...settings, site_logo_url: e.target.value })}
-                placeholder="https://example.com/logo.png"
+                onChange={(url) => setSettings({ ...settings, site_logo_url: url })}
+                label="logo"
+                folder="branding"
               />
               <p className="text-xs text-muted-foreground">
-                Podaj URL do obrazka logo. Zostanie użyte w nawigacji i stopce zamiast ikony pucharu.
+                Zostanie użyte w nawigacji i stopce zamiast ikony pucharu.
               </p>
             </div>
-            {settings.site_logo_url && (
-              <div className="p-4 rounded-xl bg-secondary/50">
-                <p className="text-sm text-muted-foreground mb-2">Podgląd:</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={settings.site_logo_url} 
-                      alt="Logo preview" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm text-foreground">
-                    {settings.tournament_name}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -279,57 +259,32 @@ const AdminSettings = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="favicon_url" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <FileImage className="w-4 h-4 text-muted-foreground" />
-                URL favicon (ikona w karcie)
+                Favicon (ikona w karcie)
               </Label>
-              <Input
-                id="favicon_url"
+              <FileUpload
                 value={settings.favicon_url}
-                onChange={(e) => setSettings({ ...settings, favicon_url: e.target.value })}
-                placeholder="https://example.com/favicon.ico"
+                onChange={(url) => setSettings({ ...settings, favicon_url: url })}
+                label="favicon"
+                accept=".ico,.png,.svg,image/png,image/x-icon,image/svg+xml"
+                folder="branding"
               />
               <p className="text-xs text-muted-foreground">
                 Mała ikonka wyświetlana w karcie przeglądarki. Zalecany format: .ico, .png (32x32 lub 64x64).
               </p>
-              {settings.favicon_url && (
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-sm text-muted-foreground">Podgląd:</span>
-                  <img 
-                    src={settings.favicon_url} 
-                    alt="Favicon preview" 
-                    className="w-6 h-6 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="og_image_url">URL obrazka Open Graph (udostępnianie)</Label>
-              <Input
-                id="og_image_url"
+              <Label>Obrazek Open Graph (udostępnianie)</Label>
+              <FileUpload
                 value={settings.og_image_url}
-                onChange={(e) => setSettings({ ...settings, og_image_url: e.target.value })}
-                placeholder="https://example.com/og-image.jpg"
+                onChange={(url) => setSettings({ ...settings, og_image_url: url })}
+                label="og-image"
+                folder="branding"
               />
               <p className="text-xs text-muted-foreground">
                 Obrazek wyświetlany przy udostępnianiu strony na social media. Zalecany rozmiar: 1200x630.
               </p>
-              {settings.og_image_url && (
-                <div className="mt-2 p-3 rounded-xl bg-secondary/50">
-                  <p className="text-sm text-muted-foreground mb-2">Podgląd OG image:</p>
-                  <img 
-                    src={settings.og_image_url} 
-                    alt="OG Image preview" 
-                    className="max-w-full max-h-40 object-contain rounded-lg"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
             </div>
           </div>
         </div>
