@@ -1,4 +1,4 @@
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useLocation } from 'react-router-dom';
 import { Loader2, FileText, Shield, HelpCircle, HeadphonesIcon } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
@@ -12,8 +12,11 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const StaticPage = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const { data: page, isLoading, error } = useStaticPage(slug || '');
+  const { slug: paramSlug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  // Get slug from URL path if not from params (for static routes like /regulamin)
+  const slug = paramSlug || location.pathname.replace('/', '');
+  const { data: page, isLoading, error } = useStaticPage(slug);
 
   if (isLoading) {
     return (
