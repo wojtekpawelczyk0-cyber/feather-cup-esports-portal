@@ -32,10 +32,13 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get team_id from request body
-    const { team_id } = await req.json();
-    if (!team_id) throw new Error("Team ID is required");
-    logStep("Team ID received", { team_id });
+    // Get team_id or team_name from request body
+    const body = await req.json();
+    const { team_id, team_name } = body;
+    
+    // Either team_id (existing team) or team_name (new team) is required
+    if (!team_id && !team_name) throw new Error("Team ID or Team Name is required");
+    logStep("Request received", { team_id, team_name });
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -50,6 +53,19 @@ serve(async (req) => {
       logStep("Found existing Stripe customer", { customerId });
     }
 
+    // Build metadata for the session
+    const metadata: Record<string, string> = {
+      user_id: user.id,
+    };
+    
+    if (team_id) {
+      metadata.team_id = team_id;
+    }
+    if (team_name) {
+      metadata.team_name = team_name;
+      metadata.create_new_team = "true";
+    }
+
     // Create a one-time payment session for tournament entry fee
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -61,17 +77,14 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/moja-druzyna?payment=success&team_id=${team_id}`,
+      success_url: `${req.headers.get("origin")}/moja-druzyna?payment=success${team_id ? `&team_id=${team_id}` : ''}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/moja-druzyna?payment=cancelled`,
-      metadata: {
-        team_id: team_id,
-        user_id: user.id,
-      },
+      metadata,
     });
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: session.url, session_id: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
