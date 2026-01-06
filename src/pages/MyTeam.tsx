@@ -63,10 +63,11 @@ const MyTeam = () => {
   // Handle payment callback
   useEffect(() => {
     const payment = searchParams.get('payment');
+    const sessionId = searchParams.get('session_id');
     const teamId = searchParams.get('team_id');
     
-    if (payment === 'success' && teamId) {
-      verifyPayment(teamId);
+    if (payment === 'success' && sessionId) {
+      verifyPayment(teamId, sessionId);
     } else if (payment === 'cancelled') {
       toast({
         title: 'Płatność anulowana',
@@ -76,10 +77,11 @@ const MyTeam = () => {
     }
   }, [searchParams]);
 
-  const verifyPayment = async (teamId: string) => {
+  const verifyPayment = async (teamId: string | null, sessionId: string) => {
+    setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-tournament-payment', {
-        body: { team_id: teamId },
+        body: { team_id: teamId, session_id: sessionId },
       });
 
       if (error) throw error;
@@ -87,12 +89,21 @@ const MyTeam = () => {
       if (data?.paid) {
         toast({
           title: 'Płatność zakończona!',
-          description: 'Twoja drużyna została zarejestrowana do turnieju.',
+          description: 'Twoja drużyna została utworzona i opłacona.',
         });
+        // Clear URL params and refresh
+        navigate('/moja-druzyna', { replace: true });
         fetchTeam();
       }
     } catch (error: any) {
       console.error('Payment verification error:', error);
+      toast({
+        title: 'Błąd weryfikacji',
+        description: 'Nie udało się zweryfikować płatności. Spróbuj odświeżyć stronę.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -158,30 +169,40 @@ const MyTeam = () => {
 
     setSaving(true);
     try {
-      const { data, error } = await supabase
+      // First check if team name is available
+      const { data: existingTeam } = await supabase
         .from('teams')
-        .insert({
-          name: newTeamName.trim(),
-          owner_id: user.id,
-        })
-        .select()
-        .single();
+        .select('id')
+        .eq('name', newTeamName.trim())
+        .maybeSingle();
+
+      if (existingTeam) {
+        toast({
+          title: 'Błąd',
+          description: 'Drużyna o tej nazwie już istnieje',
+          variant: 'destructive',
+        });
+        setSaving(false);
+        return;
+      }
+
+      // Redirect to payment with team name - team will be created after successful payment
+      const { data, error } = await supabase.functions.invoke('create-tournament-payment', {
+        body: { team_name: newTeamName.trim() },
+      });
 
       if (error) throw error;
 
-      setTeam(data as Team);
-      setShowCreateForm(false);
-      setNewTeamName('');
-      toast({ title: 'Drużyna utworzona!' });
+      if (data?.url) {
+        // Open Stripe checkout
+        window.location.href = data.url;
+      }
     } catch (error: any) {
       toast({
         title: 'Błąd',
-        description: error.message?.includes('unique') 
-          ? 'Drużyna o tej nazwie już istnieje' 
-          : error.message,
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
       setSaving(false);
     }
   };
@@ -336,7 +357,10 @@ const MyTeam = () => {
                 </>
               ) : (
                 <div className="max-w-md mx-auto">
-                  <h2 className="text-2xl font-bold mb-6">Nowa drużyna</h2>
+                  <h2 className="text-2xl font-bold mb-2">Nowa drużyna</h2>
+                  <p className="text-muted-foreground mb-6 text-sm">
+                    Po wpisaniu nazwy zostaniesz przekierowany do płatności wpisowego (50 PLN)
+                  </p>
                   <div className="space-y-4">
                     <div className="space-y-2 text-left">
                       <Label htmlFor="teamName">Nazwa drużyny</Label>
@@ -348,7 +372,7 @@ const MyTeam = () => {
                         className="bg-secondary/50"
                       />
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 justify-center">
                       <Button variant="ghost" onClick={() => setShowCreateForm(false)}>
                         Anuluj
                       </Button>
@@ -357,8 +381,12 @@ const MyTeam = () => {
                         onClick={createTeam}
                         disabled={!newTeamName.trim() || saving}
                       >
-                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Utwórz
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CreditCard className="w-4 h-4 mr-2" />
+                        )}
+                        Utwórz i zapłać 50 PLN
                       </Button>
                     </div>
                   </div>
