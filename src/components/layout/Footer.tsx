@@ -107,7 +107,7 @@ export const Footer = () => {
             {footerSettings.footer_copyright}
           </p>
           <p className="text-muted-foreground text-sm">
-            Designed with ❤️ for esports
+            Designed by <span className="text-primary font-medium">Jager</span> for Feather Cup
           </p>
         </div>
       </div>
