@@ -10,6 +10,7 @@ interface HeroSectionProps {
   size?: 'sm' | 'md' | 'lg';
   gradient?: boolean;
   showBg?: boolean;
+  backgroundImage?: string | null;
 }
 
 export const HeroSection = ({
@@ -20,12 +21,16 @@ export const HeroSection = ({
   size = 'md',
   gradient = true,
   showBg = false,
+  backgroundImage,
 }: HeroSectionProps) => {
   const sizeClasses = {
     sm: 'py-16 md:py-20',
     md: 'py-20 md:py-32',
     lg: 'py-32 md:py-48',
   };
+
+  // Use custom background image if provided, otherwise fall back to default
+  const bgImageSrc = backgroundImage || heroBg;
 
   return (
     <section
@@ -39,7 +44,7 @@ export const HeroSection = ({
       {showBg && (
         <div className="absolute inset-0">
           <img 
-            src={heroBg} 
+            src={bgImageSrc} 
             alt="" 
             className="w-full h-full object-cover opacity-30"
           />
