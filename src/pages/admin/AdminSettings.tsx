@@ -24,8 +24,10 @@ const AdminSettings = () => {
     max_teams: '32',
     prize_pool: '₿50K',
     tournament_days: '7',
+    // Hero section
     hero_title: 'Feather Cup 2024',
     hero_subtitle: 'Dołącz do największego turnieju esportowego tego roku. Rywalizuj z najlepszymi, zdobywaj nagrody i stań się legendą.',
+    hero_image_url: '',
     // Branding
     site_logo_url: '',
     // SEO settings
@@ -127,6 +129,21 @@ const AdminSettings = () => {
                 placeholder="Opis turnieju..."
                 rows={2}
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Image className="w-4 h-4 text-muted-foreground" />
+                Obraz tła Hero
+              </Label>
+              <FileUpload
+                value={settings.hero_image_url}
+                onChange={(url) => setSettings({ ...settings, hero_image_url: url })}
+                label="hero-background"
+                folder="branding"
+              />
+              <p className="text-xs text-muted-foreground">
+                Zalecany rozmiar: 1920x1080 lub większy. Obraz będzie wyświetlany w tle sekcji hero na stronie głównej.
+              </p>
             </div>
           </div>
         </div>

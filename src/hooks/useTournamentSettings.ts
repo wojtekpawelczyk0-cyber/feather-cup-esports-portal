@@ -5,6 +5,7 @@ interface TournamentSettings {
   tournament_name: string;
   hero_title: string;
   hero_subtitle: string;
+  hero_image_url: string;
   prize_pool: string;
   max_teams: string;
   tournament_days: string;
@@ -21,6 +22,7 @@ const defaultSettings: TournamentSettings = {
   tournament_name: 'Feather Cup 2024',
   hero_title: 'Feather Cup 2024',
   hero_subtitle: 'Dołącz do największego turnieju esportowego tego roku. Rywalizuj z najlepszymi, zdobywaj nagrody i stań się legendą.',
+  hero_image_url: '',
   prize_pool: '₿50K',
   max_teams: '32',
   tournament_days: '7',

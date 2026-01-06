@@ -57,6 +57,7 @@ const Index = () => {
         subtitle={settings.hero_subtitle}
         size="lg"
         showBg
+        backgroundImage={settings.hero_image_url || undefined}
       >
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button variant="hero" size="xl" className="group" asChild>
