@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CREATE-TOURNAMENT-PAYMENT] ${step}${detailsStr}`);
 };
 
@@ -17,10 +17,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
+  const supabaseClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "");
 
   try {
     logStep("Function started");
@@ -35,7 +32,7 @@ serve(async (req) => {
     // Get team_id or team_name from request body
     const body = await req.json();
     const { team_id, team_name } = body;
-    
+
     // Either team_id (existing team) or team_name (new team) is required
     if (!team_id && !team_name) throw new Error("Team ID or Team Name is required");
     logStep("Request received", { team_id, team_name });
@@ -57,7 +54,7 @@ serve(async (req) => {
     const metadata: Record<string, string> = {
       user_id: user.id,
     };
-    
+
     if (team_id) {
       metadata.team_id = team_id;
     }
@@ -72,12 +69,12 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: "price_1SikVq23LYymtlJgu5JuFgW9",
+          price: "price_1SoUIi23LYymtlJgYVkOVkth",
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/moja-druzyna?payment=success${team_id ? `&team_id=${team_id}` : ''}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${req.headers.get("origin")}/moja-druzyna?payment=success${team_id ? `&team_id=${team_id}` : ""}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/moja-druzyna?payment=cancelled`,
       metadata,
     });
