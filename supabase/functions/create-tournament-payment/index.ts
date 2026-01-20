@@ -37,6 +37,35 @@ serve(async (req) => {
     if (!team_id && !team_name) throw new Error("Team ID or Team Name is required");
     logStep("Request received", { team_id, team_name });
 
+    // Check team limit - only for new team creation
+    if (team_name) {
+      // Get max_teams setting
+      const { data: settingsData } = await supabaseClient
+        .from('tournament_settings')
+        .select('value')
+        .eq('key', 'max_teams')
+        .single();
+      
+      const maxTeams = parseInt(settingsData?.value || '32', 10);
+      logStep("Max teams setting", { maxTeams });
+
+      // Count current teams
+      const { count: currentTeams, error: countError } = await supabaseClient
+        .from('teams')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) {
+        logStep("Error counting teams", { error: countError.message });
+        throw new Error("Nie udało się sprawdzić limitu drużyn");
+      }
+
+      logStep("Current teams count", { currentTeams, maxTeams });
+
+      if (currentTeams !== null && currentTeams >= maxTeams) {
+        throw new Error(`Osiągnięto limit drużyn (${maxTeams}). Rejestracja została zamknięta.`);
+      }
+    }
+
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
