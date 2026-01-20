@@ -45,6 +45,8 @@ const MyTeam = () => {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [newTeamName, setNewTeamName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [teamsLimitReached, setTeamsLimitReached] = useState(false);
+  const [teamsLimitInfo, setTeamsLimitInfo] = useState({ current: 0, max: 32 });
   const [newMember, setNewMember] = useState({
     nickname: '',
     steam_id: '',
@@ -57,6 +59,7 @@ const MyTeam = () => {
       navigate('/auth');
     } else if (user) {
       fetchTeam();
+      checkTeamsLimit();
     }
   }, [user, authLoading, navigate]);
 
@@ -129,6 +132,30 @@ const MyTeam = () => {
       });
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const checkTeamsLimit = async () => {
+    try {
+      // Get max_teams setting
+      const { data: settingsData } = await supabase
+        .from('tournament_settings')
+        .select('value')
+        .eq('key', 'max_teams')
+        .single();
+      
+      const maxTeams = parseInt(settingsData?.value || '32', 10);
+
+      // Count current teams
+      const { count } = await supabase
+        .from('teams')
+        .select('*', { count: 'exact', head: true });
+      
+      const currentTeams = count || 0;
+      setTeamsLimitInfo({ current: currentTeams, max: maxTeams });
+      setTeamsLimitReached(currentTeams >= maxTeams);
+    } catch (error) {
+      console.error('Error checking teams limit:', error);
     }
   };
 
@@ -340,6 +367,18 @@ const MyTeam = () => {
                 </Link>
               </Button>
             </div>
+          ) : teamsLimitReached ? (
+            // Teams limit reached
+            <div className="glass-card p-8 text-center border-2 border-destructive/30">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
+              <h2 className="text-2xl font-bold mb-2">Rejestracja zamknięta</h2>
+              <p className="text-muted-foreground mb-4">
+                Osiągnięto maksymalną liczbę drużyn w turnieju ({teamsLimitInfo.current}/{teamsLimitInfo.max}).
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Śledź nas, aby być na bieżąco z przyszłymi turniejami!
+              </p>
+            </div>
           ) : !team ? (
             // No team - show create form
             <div className="glass-card p-8 text-center">
@@ -347,8 +386,11 @@ const MyTeam = () => {
                 <>
                   <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                   <h2 className="text-2xl font-bold mb-2">Nie masz jeszcze drużyny</h2>
-                  <p className="text-muted-foreground mb-6">
+                  <p className="text-muted-foreground mb-4">
                     Utwórz drużynę, aby wziąć udział w turnieju Feather Cup
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Zarejestrowanych drużyn: {teamsLimitInfo.current}/{teamsLimitInfo.max}
                   </p>
                   <Button variant="hero" onClick={() => setShowCreateForm(true)}>
                     <Plus className="w-4 h-4 mr-2" />
