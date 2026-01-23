@@ -4,21 +4,23 @@ import { Menu, X, Trophy, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useTournamentSettings } from '@/hooks/useTournamentSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
-
-const navLinks = [
-  { name: 'Strona Główna', path: '/' },
-  { name: 'Mecze', path: '/mecze' },
-  { name: 'Wyniki', path: '/wyniki' },
-  { name: 'Drużyny', path: '/druzyny' },
-  { name: 'Kontakt', path: '/kontakt' },
-];
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
   const { settings } = useTournamentSettings();
+  const { t } = useLanguage();
+
+  const navLinks = [
+    { name: t('nav.home'), path: '/' },
+    { name: t('nav.matches'), path: '/mecze' },
+    { name: t('nav.results'), path: '/wyniki' },
+    { name: t('nav.teams'), path: '/druzyny' },
+    { name: t('nav.contact'), path: '/kontakt' },
+  ];
 
   const handleSignOut = async () => {
     await signOut();
@@ -93,10 +95,10 @@ export const Navigation = () => {
             ) : (
               <>
                 <Button variant="glass" size="sm" asChild>
-                  <Link to="/auth">Zaloguj się</Link>
+                  <Link to="/auth">{t('nav.login')}</Link>
                 </Button>
                 <Button variant="hero" size="sm" asChild>
-                  <Link to="/auth">Zapisz drużynę</Link>
+                  <Link to="/auth">{t('nav.register_team')}</Link>
                 </Button>
               </>
             )}
@@ -149,12 +151,12 @@ export const Navigation = () => {
                   <>
                     <Button variant="glass" className="w-full" asChild>
                       <Link to="/auth" onClick={() => setIsOpen(false)}>
-                        Zaloguj się
+                        {t('nav.login')}
                       </Link>
                     </Button>
                     <Button variant="hero" className="w-full" asChild>
                       <Link to="/auth" onClick={() => setIsOpen(false)}>
-                        Zapisz drużynę
+                        {t('nav.register_team')}
                       </Link>
                     </Button>
                   </>

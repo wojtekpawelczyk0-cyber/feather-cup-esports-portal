@@ -2,10 +2,12 @@ import { Link } from 'react-router-dom';
 import { Trophy, Twitter, Youtube, Twitch, MessageCircle } from 'lucide-react';
 import { useFooterSettings } from '@/hooks/useFooterSettings';
 import { useTournamentSettings } from '@/hooks/useTournamentSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const Footer = () => {
   const { settings: footerSettings } = useFooterSettings();
   const { settings: tournamentSettings } = useTournamentSettings();
+  const { t } = useLanguage();
 
   const socialLinks = [
     { icon: Twitter, label: 'Twitter', url: footerSettings.footer_twitter },
@@ -57,16 +59,16 @@ export const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-semibold text-foreground mb-4">Nawigacja</h4>
+            <h4 className="font-semibold text-foreground mb-4">{t('footer.navigation')}</h4>
             <ul className="space-y-2">
               {[
-                { name: 'Strona Główna', path: '/' },
-                { name: 'Mecze', path: '/mecze' },
-                { name: 'Wyniki', path: '/wyniki' },
-                { name: 'Drużyny', path: '/druzyny' },
-                { name: 'Kontakt', path: '/kontakt' },
+                { name: t('nav.home'), path: '/' },
+                { name: t('nav.matches'), path: '/mecze' },
+                { name: t('nav.results'), path: '/wyniki' },
+                { name: t('nav.teams'), path: '/druzyny' },
+                { name: t('nav.contact'), path: '/kontakt' },
               ].map((link) => (
-                <li key={link.name}>
+                <li key={link.path}>
                   <Link
                     to={link.path}
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
@@ -80,15 +82,15 @@ export const Footer = () => {
 
           {/* Legal */}
           <div>
-            <h4 className="font-semibold text-foreground mb-4">Informacje</h4>
+            <h4 className="font-semibold text-foreground mb-4">{t('footer.information')}</h4>
             <ul className="space-y-2">
               {[
-                { name: 'Regulamin', path: '/regulamin' },
-                { name: 'Polityka prywatności', path: '/polityka-prywatnosci' },
-                { name: 'FAQ', path: '/faq' },
-                { name: 'Wsparcie', path: '/wsparcie' }
+                { name: t('footer.terms'), path: '/regulamin' },
+                { name: t('footer.privacy'), path: '/polityka-prywatnosci' },
+                { name: t('footer.faq'), path: '/faq' },
+                { name: t('footer.support'), path: '/wsparcie' }
               ].map((link) => (
-                <li key={link.name}>
+                <li key={link.path}>
                   <Link
                     to={link.path}
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { useDynamicSEO } from "@/hooks/useDynamicSEO";
 import Index from "./pages/Index";
@@ -45,43 +46,45 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
-        <AuthProvider>
-          <PageTracker />
-          <SEOManager />
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/mecze" element={<Matches />} />
-            <Route path="/wyniki" element={<Results />} />
-            <Route path="/druzyny" element={<Teams />} />
-            <Route path="/druzyny/:id" element={<TeamDetails />} />
-            <Route path="/kontakt" element={<Contact />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/auth/steam-callback" element={<SteamCallback />} />
-            <Route path="/konto" element={<Account />} />
-            <Route path="/moja-druzyna" element={<MyTeam />} />
-            {/* Static Pages */}
-            <Route path="/regulamin" element={<StaticPage />} />
-            <Route path="/polityka-prywatnosci" element={<StaticPage />} />
-            <Route path="/faq" element={<StaticPage />} />
-            <Route path="/wsparcie" element={<StaticPage />} />
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="komentator" element={<CommentatorPanel />} />
-              <Route path="drabinka" element={<AdminBracket />} />
-              <Route path="mecze" element={<AdminMatches />} />
-              <Route path="druzyny" element={<AdminTeams />} />
-              <Route path="wyniki" element={<AdminMatches />} />
-              <Route path="sponsorzy" element={<AdminSponsors />} />
-              <Route path="uzytkownicy" element={<AdminUsers />} />
-              <Route path="ustawienia" element={<AdminSettings />} />
-              <Route path="strony" element={<AdminPages />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <PageTracker />
+            <SEOManager />
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/mecze" element={<Matches />} />
+              <Route path="/wyniki" element={<Results />} />
+              <Route path="/druzyny" element={<Teams />} />
+              <Route path="/druzyny/:id" element={<TeamDetails />} />
+              <Route path="/kontakt" element={<Contact />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/steam-callback" element={<SteamCallback />} />
+              <Route path="/konto" element={<Account />} />
+              <Route path="/moja-druzyna" element={<MyTeam />} />
+              {/* Static Pages */}
+              <Route path="/regulamin" element={<StaticPage />} />
+              <Route path="/polityka-prywatnosci" element={<StaticPage />} />
+              <Route path="/faq" element={<StaticPage />} />
+              <Route path="/wsparcie" element={<StaticPage />} />
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="komentator" element={<CommentatorPanel />} />
+                <Route path="drabinka" element={<AdminBracket />} />
+                <Route path="mecze" element={<AdminMatches />} />
+                <Route path="druzyny" element={<AdminTeams />} />
+                <Route path="wyniki" element={<AdminMatches />} />
+                <Route path="sponsorzy" element={<AdminSponsors />} />
+                <Route path="uzytkownicy" element={<AdminUsers />} />
+                <Route path="ustawienia" element={<AdminSettings />} />
+                <Route path="strony" element={<AdminPages />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
