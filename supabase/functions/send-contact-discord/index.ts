@@ -8,6 +8,7 @@ const corsHeaders = {
 interface ContactRequest {
   name: string;
   email: string;
+  discordId: string;
   subject: string;
   message: string;
 }
@@ -19,10 +20,10 @@ serve(async (req) => {
   }
 
   try {
-    const { name, email, subject, message }: ContactRequest = await req.json();
+    const { name, email, discordId, subject, message }: ContactRequest = await req.json();
     
     // Validate input
-    if (!name || !email || !subject || !message) {
+    if (!name || !email || !discordId || !subject || !message) {
       throw new Error("Wszystkie pola są wymagane");
     }
 
@@ -31,7 +32,7 @@ serve(async (req) => {
       throw new Error("Discord webhook not configured");
     }
 
-    console.log("Sending contact message to Discord:", { name, email, subject });
+    console.log("Sending contact message to Discord:", { name, email, discordId, subject });
 
     // Create Discord embed
     const embed = {
@@ -46,6 +47,11 @@ serve(async (req) => {
         {
           name: "📧 Email",
           value: email,
+          inline: true,
+        },
+        {
+          name: "🎮 Discord",
+          value: discordId,
           inline: true,
         },
         {
