@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, Mail, MessageSquare, User } from 'lucide-react';
+import { Send, Mail, MessageSquare, User, MessageCircle } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ const Contact = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    discordId: '',
     subject: '',
     message: '',
   });
@@ -44,7 +45,7 @@ const Contact = () => {
         description: 'Odpowiemy najszybciej jak to możliwe.',
       });
 
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({ name: '', email: '', discordId: '', subject: '', message: '' });
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
@@ -99,6 +100,23 @@ const Contact = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="jan@example.com"
+                  required
+                  className="bg-secondary/50 border-border/50 focus:border-primary"
+                />
+              </div>
+
+              {/* Discord ID */}
+              <div className="space-y-2">
+                <Label htmlFor="discordId" className="flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  Discord ID
+                </Label>
+                <Input
+                  id="discordId"
+                  name="discordId"
+                  value={formData.discordId}
+                  onChange={handleChange}
+                  placeholder="nazwa#1234 lub ID użytkownika"
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary"
                 />
