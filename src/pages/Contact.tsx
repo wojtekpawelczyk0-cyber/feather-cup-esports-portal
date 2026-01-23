@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Contact = () => {
   const { toast } = useToast();
@@ -31,16 +32,29 @@ const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const { data, error } = await supabase.functions.invoke('send-contact-discord', {
+        body: formData,
+      });
 
-    toast({
-      title: 'Wiadomość wysłana!',
-      description: 'Odpowiemy najszybciej jak to możliwe.',
-    });
+      if (error) throw error;
 
-    setFormData({ name: '', email: '', subject: '', message: '' });
-    setIsSubmitting(false);
+      toast({
+        title: 'Wiadomość wysłana!',
+        description: 'Odpowiemy najszybciej jak to możliwe.',
+      });
+
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast({
+        title: 'Błąd wysyłania',
+        description: 'Nie udało się wysłać wiadomości. Spróbuj ponownie później.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
