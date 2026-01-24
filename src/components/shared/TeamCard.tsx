@@ -1,6 +1,7 @@
 import { Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TeamCardProps {
   id: string;
@@ -19,13 +20,15 @@ export const TeamCard = ({
   status,
   className,
 }: TeamCardProps) => {
+  const { t } = useLanguage();
+
   const statusConfig = {
     ready: {
-      label: 'Gotowa',
+      label: t('teams.status.ready'),
       color: 'bg-primary/20 text-primary',
     },
     preparing: {
-      label: 'W przygotowaniu',
+      label: t('teams.status.preparing'),
       color: 'bg-yellow-500/20 text-yellow-500',
     },
   };
@@ -48,7 +51,7 @@ export const TeamCard = ({
         </h3>
         <div className="flex items-center justify-center gap-1 text-muted-foreground text-sm mb-3">
           <Users className="w-4 h-4" />
-          <span>{memberCount} członków</span>
+          <span>{memberCount} {t('teams.members')}</span>
         </div>
         <span
           className={cn(

@@ -1,5 +1,6 @@
 import { Calendar, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Team {
   name: string;
@@ -24,6 +25,8 @@ export const MatchCard = ({
   status,
   className,
 }: MatchCardProps) => {
+  const { t } = useLanguage();
+
   const statusColors = {
     upcoming: 'bg-primary/20 text-primary',
     live: 'bg-destructive/20 text-destructive animate-pulse',
@@ -31,9 +34,9 @@ export const MatchCard = ({
   };
 
   const statusLabels = {
-    upcoming: 'Nadchodzący',
-    live: 'LIVE',
-    finished: 'Zakończony',
+    upcoming: t('matches.status.upcoming'),
+    live: t('matches.status.live'),
+    finished: t('matches.status.finished'),
   };
 
   return (
@@ -99,7 +102,7 @@ export const MatchCard = ({
               </span>
             </>
           ) : (
-            <span className="text-xl font-bold text-muted-foreground">VS</span>
+            <span className="text-xl font-bold text-muted-foreground">{t('common.vs')}</span>
           )}
         </div>
 

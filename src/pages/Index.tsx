@@ -10,14 +10,18 @@ import { useMatches } from '@/hooks/useMatches';
 import { useTeams } from '@/hooks/useTeams';
 import { useSponsors } from '@/hooks/useSponsors';
 import { useTournamentSettings } from '@/hooks/useTournamentSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 
 const Index = () => {
   const { matches, loading: matchesLoading } = useMatches();
   const { teams } = useTeams();
   const { sponsors, loading: sponsorsLoading } = useSponsors();
   const { settings, loading: settingsLoading } = useTournamentSettings();
+  const { t, language } = useLanguage();
+
+  const dateLocale = language === 'pl' ? pl : enUS;
 
   const upcomingMatches = matches.filter(m => m.status === 'scheduled' || m.status === 'live').slice(0, 3);
   const recentMatches = matches.filter(m => m.status === 'finished').slice(0, 3);
@@ -27,26 +31,26 @@ const Index = () => {
     return {
       id: match.id,
       team1: {
-        name: match.team1?.name || 'TBD',
+        name: match.team1?.name || t('common.tbd'),
         logo: match.team1?.logo_url || undefined,
         score: match.team1_score ?? undefined,
       },
       team2: {
-        name: match.team2?.name || 'TBD',
+        name: match.team2?.name || t('common.tbd'),
         logo: match.team2?.logo_url || undefined,
         score: match.team2_score ?? undefined,
       },
-      date: format(date, 'd MMM', { locale: pl }),
+      date: format(date, 'd MMM', { locale: dateLocale }),
       time: format(date, 'HH:mm'),
       status: match.status === 'scheduled' ? 'upcoming' as const : match.status === 'live' ? 'live' as const : 'finished' as const,
     };
   };
 
   const stats = [
-    { icon: Trophy, value: settings.prize_pool, label: 'Pula nagród' },
-    { icon: Users, value: teams.length > 0 ? String(teams.length) : settings.max_teams, label: 'Drużyny' },
-    { icon: Calendar, value: settings.tournament_days, label: 'Dni turnieju' },
-    { icon: Zap, value: matches.length > 0 ? String(matches.length) : '64', label: 'Mecze' },
+    { icon: Trophy, value: settings.prize_pool, label: t('home.prize_pool') },
+    { icon: Users, value: teams.length > 0 ? String(teams.length) : settings.max_teams, label: t('home.teams') },
+    { icon: Calendar, value: settings.tournament_days, label: t('home.tournament_days') },
+    { icon: Zap, value: matches.length > 0 ? String(matches.length) : '64', label: t('home.matches') },
   ];
 
   return (
@@ -62,12 +66,12 @@ const Index = () => {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button variant="hero" size="xl" className="group" asChild>
             <Link to="/moja-druzyna">
-              Zapisz swoją drużynę
+              {t('home.register_team')}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </Button>
           <Button variant="glass" size="xl" asChild>
-            <Link to="/mecze">Zobacz harmonogram</Link>
+            <Link to="/mecze">{t('home.view_schedule')}</Link>
           </Button>
         </div>
       </HeroSection>
@@ -104,12 +108,12 @@ const Index = () => {
         <div className="container max-w-6xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <SectionTitle
-              title="Nadchodzące mecze"
-              subtitle="Nie przegap kolejnych emocji"
+              title={t('home.upcoming_matches')}
+              subtitle={t('home.upcoming_subtitle')}
             />
             <Button variant="ghost" asChild className="group">
               <Link to="/mecze">
-                Zobacz wszystkie
+                {t('home.view_all')}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
@@ -133,7 +137,7 @@ const Index = () => {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              Brak nadchodzących meczów
+              {t('home.no_upcoming')}
             </p>
           )}
         </div>
@@ -144,12 +148,12 @@ const Index = () => {
         <div className="container max-w-6xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <SectionTitle
-              title="Ostatnie wyniki"
-              subtitle="Zobacz jak zakończyły się poprzednie mecze"
+              title={t('home.recent_results')}
+              subtitle={t('home.recent_subtitle')}
             />
             <Button variant="ghost" asChild className="group">
               <Link to="/wyniki">
-                Wszystkie wyniki
+                {t('home.all_results')}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
@@ -173,7 +177,7 @@ const Index = () => {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              Brak zakończonych meczów
+              {t('home.no_finished')}
             </p>
           )}
         </div>
@@ -187,15 +191,15 @@ const Index = () => {
         <div className="container max-w-4xl mx-auto px-4 relative z-10">
           <div className="glass-card p-8 md:p-12 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gradient-hero">
-              Gotowy na wyzwanie?
+              {t('home.cta_title')}
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              Zarejestruj swoją drużynę już dziś i weź udział w {settings.tournament_name}. 
-              Nagrody, sława i niezapomniane emocje czekają!
+              {t('home.cta_desc')} {settings.tournament_name}. 
+              {t('home.cta_suffix')}
             </p>
             <Button variant="cta" size="xl" className="group" asChild>
               <Link to="/moja-druzyna">
-                Zapisz swoją drużynę
+                {t('home.register_team')}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>

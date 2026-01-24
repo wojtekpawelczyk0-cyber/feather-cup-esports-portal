@@ -4,11 +4,13 @@ import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
 import { useTeamDetails } from '@/hooks/useTeams';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
 const TeamDetails = () => {
   const { id } = useParams();
   const { team, members, loading } = useTeamDetails(id);
+  const { t } = useLanguage();
 
   if (loading) {
     return (
@@ -24,11 +26,11 @@ const TeamDetails = () => {
     return (
       <Layout>
         <div className="min-h-[60vh] flex flex-col items-center justify-center">
-          <h1 className="text-2xl font-bold mb-4">Drużyna nie znaleziona</h1>
+          <h1 className="text-2xl font-bold mb-4">{t('team.not_found')}</h1>
           <Button asChild variant="ghost">
             <Link to="/druzyny">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Wróć do listy drużyn
+              {t('team.back_to_list')}
             </Link>
           </Button>
         </div>
@@ -38,15 +40,15 @@ const TeamDetails = () => {
 
   const statusConfig = {
     ready: {
-      label: 'Gotowa do turnieju',
+      label: t('team.status.ready_tournament'),
       color: 'bg-primary/20 text-primary',
     },
     preparing: {
-      label: 'W przygotowaniu',
+      label: t('teams.status.preparing'),
       color: 'bg-yellow-500/20 text-yellow-500',
     },
     registered: {
-      label: 'Zarejestrowana',
+      label: t('teams.status.registered'),
       color: 'bg-green-500/20 text-green-500',
     },
   };
@@ -67,9 +69,9 @@ const TeamDetails = () => {
     index: number;
   }) => {
     const typeConfig = {
-      player: { icon: User, badge: 'Gracz', color: 'border-primary/30' },
-      reserve: { icon: Shield, badge: 'Rezerwowy', color: 'border-yellow-500/30' },
-      coach: { icon: GraduationCap, badge: 'Trener', color: 'border-accent/30' },
+      player: { icon: User, badge: t('team.role.player'), color: 'border-primary/30' },
+      reserve: { icon: Shield, badge: t('team.role.reserve'), color: 'border-yellow-500/30' },
+      coach: { icon: GraduationCap, badge: t('team.role.coach'), color: 'border-accent/30' },
     };
 
     const config = typeConfig[type];
@@ -126,7 +128,7 @@ const TeamDetails = () => {
           <Button asChild variant="ghost" className="mb-8">
             <Link to="/druzyny">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Wszystkie drużyny
+              {t('team.all_teams')}
             </Link>
           </Button>
 
@@ -134,7 +136,7 @@ const TeamDetails = () => {
           <div className="mb-10">
             <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              Gracze ({players.length}/5)
+              {t('team.players')} ({players.length}/5)
             </h3>
             {players.length > 0 ? (
               <div className="grid gap-3">
@@ -149,7 +151,7 @@ const TeamDetails = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">Brak graczy</p>
+              <p className="text-muted-foreground">{t('team.no_players')}</p>
             )}
           </div>
 
@@ -157,7 +159,7 @@ const TeamDetails = () => {
           <div className="mb-10">
             <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <Shield className="w-5 h-5 text-yellow-500" />
-              Rezerwowi ({reserves.length}/2)
+              {t('team.reserves')} ({reserves.length}/2)
             </h3>
             {reserves.length > 0 ? (
               <div className="grid gap-3">
@@ -172,7 +174,7 @@ const TeamDetails = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">Brak rezerwowych</p>
+              <p className="text-muted-foreground">{t('team.no_reserves')}</p>
             )}
           </div>
 
@@ -180,7 +182,7 @@ const TeamDetails = () => {
           <div>
             <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-accent" />
-              Trener ({coaches.length}/1)
+              {t('team.coach')} ({coaches.length}/1)
             </h3>
             {coaches.length > 0 ? (
               <div className="grid gap-3">
@@ -195,7 +197,7 @@ const TeamDetails = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">Brak trenera</p>
+              <p className="text-muted-foreground">{t('team.no_coach')}</p>
             )}
           </div>
         </div>
