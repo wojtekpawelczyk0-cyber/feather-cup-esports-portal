@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Auth = () => {
   const navigate = useNavigate();
   const { user, signInWithEmail, signUpWithEmail, initiateSteamLogin, loading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -43,14 +45,14 @@ const Auth = () => {
         const { error } = await signInWithEmail(formData.email, formData.password);
         if (error) {
           toast({
-            title: 'Błąd logowania',
+            title: t('auth.login_error'),
             description: error.message === 'Invalid login credentials' 
-              ? 'Nieprawidłowy email lub hasło' 
+              ? t('auth.invalid_credentials')
               : error.message,
             variant: 'destructive',
           });
         } else {
-          toast({ title: 'Zalogowano pomyślnie!' });
+          toast({ title: t('auth.logged_in') });
           navigate('/');
         }
       } else {
@@ -61,16 +63,16 @@ const Auth = () => {
         );
         if (error) {
           toast({
-            title: 'Błąd rejestracji',
+            title: t('auth.register_error'),
             description: error.message === 'User already registered'
-              ? 'Użytkownik o tym adresie email już istnieje'
+              ? t('auth.user_exists')
               : error.message,
             variant: 'destructive',
           });
         } else {
           toast({ 
-            title: 'Konto utworzone!',
-            description: 'Możesz się teraz zalogować.',
+            title: t('auth.account_created'),
+            description: t('auth.can_login'),
           });
           navigate('/');
         }
@@ -85,8 +87,8 @@ const Auth = () => {
       await initiateSteamLogin();
     } catch (error) {
       toast({
-        title: 'Błąd',
-        description: 'Nie udało się połączyć ze Steam',
+        title: t('auth.error'),
+        description: t('auth.steam_error'),
         variant: 'destructive',
       });
     }
@@ -105,8 +107,8 @@ const Auth = () => {
   return (
     <Layout>
       <HeroSection
-        title={isLogin ? 'Zaloguj się' : 'Zarejestruj się'}
-        subtitle="Dołącz do Feather Cup i weź udział w rozgrywkach"
+        title={isLogin ? t('auth.login') : t('auth.register')}
+        subtitle={t('auth.subtitle')}
         size="sm"
       />
 
@@ -124,7 +126,7 @@ const Auth = () => {
               <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.46 3.66 10.07 8.65 11.52l3.58-4.86c-.3-.04-.6-.07-.91-.07-2.93 0-5.32 2.39-5.32 5.32 0 .24.02.48.05.71l-2.31 3.13C1.29 22.16 0 17.29 0 12 0 5.37 5.37 0 12 0zm0 4.8c3.97 0 7.2 3.23 7.2 7.2s-3.23 7.2-7.2 7.2c-.79 0-1.55-.13-2.26-.37l1.68-2.28c.19.02.38.03.58.03 2.65 0 4.8-2.15 4.8-4.8s-2.15-4.8-4.8-4.8-4.8 2.15-4.8 4.8c0 .87.23 1.68.64 2.38l-1.68 2.28C4.97 15.12 4.8 13.59 4.8 12c0-3.97 3.23-7.2 7.2-7.2z"/>
               </svg>
-              Zaloguj przez Steam
+              {t('auth.steam_login')}
             </Button>
 
             <div className="relative my-6">
@@ -132,7 +134,7 @@ const Auth = () => {
                 <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-card px-4 text-muted-foreground">lub</span>
+                <span className="bg-card px-4 text-muted-foreground">{t('auth.or')}</span>
               </div>
             </div>
 
@@ -142,14 +144,14 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="displayName" className="flex items-center gap-2">
                     <User className="w-4 h-4 text-primary" />
-                    Nick
+                    {t('auth.nickname')}
                   </Label>
                   <Input
                     id="displayName"
                     name="displayName"
                     value={formData.displayName}
                     onChange={handleChange}
-                    placeholder="Twój nick"
+                    placeholder={t('auth.nickname_placeholder')}
                     className="bg-secondary/50 border-border/50 focus:border-primary"
                   />
                 </div>
@@ -158,7 +160,7 @@ const Auth = () => {
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-primary" />
-                  Email
+                  {t('auth.email')}
                 </Label>
                 <Input
                   id="email"
@@ -166,7 +168,7 @@ const Auth = () => {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="twoj@email.com"
+                  placeholder={t('auth.email_placeholder')}
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary"
                 />
@@ -175,7 +177,7 @@ const Auth = () => {
               <div className="space-y-2">
                 <Label htmlFor="password" className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-primary" />
-                  Hasło
+                  {t('auth.password')}
                 </Label>
                 <Input
                   id="password"
@@ -183,7 +185,7 @@ const Auth = () => {
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder={t('auth.password_placeholder')}
                   required
                   minLength={6}
                   className="bg-secondary/50 border-border/50 focus:border-primary"
@@ -200,7 +202,7 @@ const Auth = () => {
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : null}
-                {isLogin ? 'Zaloguj się' : 'Zarejestruj się'}
+                {isLogin ? t('auth.login') : t('auth.register')}
               </Button>
             </form>
 
@@ -211,9 +213,7 @@ const Auth = () => {
                 onClick={() => setIsLogin(!isLogin)}
                 className="text-muted-foreground hover:text-primary transition-colors text-sm"
               >
-                {isLogin
-                  ? 'Nie masz konta? Zarejestruj się'
-                  : 'Masz już konto? Zaloguj się'}
+                {isLogin ? t('auth.no_account') : t('auth.have_account')}
               </button>
             </div>
           </div>

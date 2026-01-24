@@ -8,9 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Contact = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -41,16 +43,16 @@ const Contact = () => {
       if (error) throw error;
 
       toast({
-        title: 'Wiadomość wysłana!',
-        description: 'Odpowiemy najszybciej jak to możliwe.',
+        title: t('contact.success'),
+        description: t('contact.success_desc'),
       });
 
       setFormData({ name: '', email: '', discordId: '', subject: '', message: '' });
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
-        title: 'Błąd wysyłania',
-        description: 'Nie udało się wysłać wiadomości. Spróbuj ponownie później.',
+        title: t('contact.error'),
+        description: t('contact.error_desc'),
         variant: 'destructive',
       });
     } finally {
@@ -61,8 +63,8 @@ const Contact = () => {
   return (
     <Layout>
       <HeroSection
-        title="Kontakt"
-        subtitle="Masz pytania? Skontaktuj się z nami, a odpowiemy najszybciej jak to możliwe"
+        title={t('contact.title')}
+        subtitle={t('contact.subtitle')}
         size="sm"
       />
 
@@ -74,14 +76,14 @@ const Contact = () => {
               <div className="space-y-2">
                 <Label htmlFor="name" className="flex items-center gap-2">
                   <User className="w-4 h-4 text-primary" />
-                  Imię i nazwisko
+                  {t('contact.name')}
                 </Label>
                 <Input
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="Jan Kowalski"
+                  placeholder={t('contact.name_placeholder')}
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary"
                 />
@@ -91,7 +93,7 @@ const Contact = () => {
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-primary" />
-                  Adres e-mail
+                  {t('contact.email')}
                 </Label>
                 <Input
                   id="email"
@@ -99,7 +101,7 @@ const Contact = () => {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="jan@example.com"
+                  placeholder={t('contact.email_placeholder')}
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary"
                 />
@@ -109,14 +111,14 @@ const Contact = () => {
               <div className="space-y-2">
                 <Label htmlFor="discordId" className="flex items-center gap-2">
                   <MessageCircle className="w-4 h-4 text-primary" />
-                  Discord ID
+                  {t('contact.discord_id')}
                 </Label>
                 <Input
                   id="discordId"
                   name="discordId"
                   value={formData.discordId}
                   onChange={handleChange}
-                  placeholder="nazwa#1234 lub ID użytkownika"
+                  placeholder={t('contact.discord_placeholder')}
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary"
                 />
@@ -126,14 +128,14 @@ const Contact = () => {
               <div className="space-y-2">
                 <Label htmlFor="subject" className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-primary" />
-                  Temat
+                  {t('contact.subject')}
                 </Label>
                 <Input
                   id="subject"
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  placeholder="W czym możemy pomóc?"
+                  placeholder={t('contact.subject_placeholder')}
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary"
                 />
@@ -141,13 +143,13 @@ const Contact = () => {
 
               {/* Message */}
               <div className="space-y-2">
-                <Label htmlFor="message">Wiadomość</Label>
+                <Label htmlFor="message">{t('contact.message')}</Label>
                 <Textarea
                   id="message"
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
-                  placeholder="Opisz szczegółowo swoje pytanie lub problem..."
+                  placeholder={t('contact.message_placeholder')}
                   rows={6}
                   required
                   className="bg-secondary/50 border-border/50 focus:border-primary resize-none"
@@ -163,10 +165,10 @@ const Contact = () => {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  'Wysyłanie...'
+                  t('contact.sending')
                 ) : (
                   <>
-                    Wyślij wiadomość
+                    {t('contact.send')}
                     <Send className="w-4 h-4 ml-2" />
                   </>
                 )}

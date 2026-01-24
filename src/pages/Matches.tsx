@@ -4,30 +4,34 @@ import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { MatchCard } from '@/components/shared/MatchCard';
 import { useMatches } from '@/hooks/useMatches';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 import TournamentBracket from '@/components/bracket/TournamentBracket';
 import { Button } from '@/components/ui/button';
 
 const Matches = () => {
   const { matches, loading } = useMatches();
+  const { t, language } = useLanguage();
   const [view, setView] = useState<'bracket' | 'list'>('bracket');
+
+  const dateLocale = language === 'pl' ? pl : enUS;
 
   const formatMatchForCard = (match: any) => {
     const date = new Date(match.scheduled_at);
     return {
       id: match.id,
       team1: {
-        name: match.team1?.name || 'TBD',
+        name: match.team1?.name || t('common.tbd'),
         logo: match.team1?.logo_url || undefined,
         score: match.team1_score ?? undefined,
       },
       team2: {
-        name: match.team2?.name || 'TBD',
+        name: match.team2?.name || t('common.tbd'),
         logo: match.team2?.logo_url || undefined,
         score: match.team2_score ?? undefined,
       },
-      date: format(date, 'd MMM', { locale: pl }),
+      date: format(date, 'd MMM', { locale: dateLocale }),
       time: format(date, 'HH:mm'),
       status: match.status === 'scheduled' ? 'upcoming' as const : match.status === 'live' ? 'live' as const : 'finished' as const,
     };
@@ -39,8 +43,8 @@ const Matches = () => {
   return (
     <Layout>
       <HeroSection
-        title="Harmonogram meczów"
-        subtitle="Śledź nadchodzące mecze i bądź na bieżąco z rozgrywkami Feather Cup"
+        title={t('matches.title')}
+        subtitle={t('matches.subtitle')}
         size="sm"
       />
 
@@ -54,7 +58,7 @@ const Matches = () => {
               className="gap-2"
             >
               <LayoutGrid className="w-4 h-4" />
-              Drabinka
+              {t('matches.bracket')}
             </Button>
             <Button
               variant={view === 'list' ? 'default' : 'outline'}
@@ -62,7 +66,7 @@ const Matches = () => {
               className="gap-2"
             >
               <List className="w-4 h-4" />
-              Lista
+              {t('matches.list')}
             </Button>
           </div>
 
@@ -85,7 +89,7 @@ const Matches = () => {
                   {/* Upcoming Matches */}
                   {upcomingMatches.length > 0 && (
                     <div className="mb-12">
-                      <h2 className="section-title mb-6">Nadchodzące mecze</h2>
+                      <h2 className="section-title mb-6">{t('matches.upcoming')}</h2>
                       <div className="grid gap-4">
                         {upcomingMatches.map((match, index) => (
                           <div
@@ -103,7 +107,7 @@ const Matches = () => {
                   {/* Finished Matches */}
                   {finishedMatches.length > 0 && (
                     <div>
-                      <h2 className="section-title mb-6">Zakończone mecze</h2>
+                      <h2 className="section-title mb-6">{t('matches.finished')}</h2>
                       <div className="grid gap-4">
                         {finishedMatches.map((match, index) => (
                           <div
@@ -121,7 +125,7 @@ const Matches = () => {
                   {matches.length === 0 && (
                     <div className="text-center py-16">
                       <p className="text-muted-foreground text-lg">
-                        Brak meczów do wyświetlenia. Harmonogram zostanie wkrótce uzupełniony!
+                        {t('matches.no_matches')}
                       </p>
                     </div>
                   )}

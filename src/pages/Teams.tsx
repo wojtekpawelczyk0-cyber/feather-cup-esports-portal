@@ -3,15 +3,17 @@ import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { TeamCard } from '@/components/shared/TeamCard';
 import { useTeams } from '@/hooks/useTeams';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Teams = () => {
   const { teams, loading } = useTeams();
+  const { t } = useLanguage();
 
   return (
     <Layout>
       <HeroSection
-        title="Drużyny"
-        subtitle="Poznaj wszystkie drużyny biorące udział w Feather Cup 2024"
+        title={t('teams.title')}
+        subtitle={t('teams.subtitle')}
         size="sm"
       />
 
@@ -42,7 +44,7 @@ const Teams = () => {
           ) : (
             <div className="text-center py-16">
               <p className="text-muted-foreground text-lg">
-                Brak zarejestrowanych drużyn. Bądź pierwszy i zapisz swoją drużynę!
+                {t('teams.no_teams')}
               </p>
             </div>
           )}

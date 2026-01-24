@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Trophy } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import confetti from 'canvas-confetti';
 
@@ -137,7 +138,10 @@ const isFinalMatch = (round: string | null) => {
 const Results = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t, language } = useLanguage();
   const previousMatchesRef = useRef<Match[]>([]);
+
+  const dateLocale = language === 'pl' ? pl : enUS;
 
   const handleMatchUpdates = useCallback((newMatches: Match[]) => {
     const prevMatches = previousMatchesRef.current;
@@ -237,7 +241,7 @@ const Results = () => {
         {isLive && (
           <div className="flex items-center gap-2 mb-4">
             <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-red-400 font-semibold text-sm uppercase tracking-wide">Na żywo</span>
+            <span className="text-red-400 font-semibold text-sm uppercase tracking-wide">{t('results.live')}</span>
           </div>
         )}
 
@@ -261,11 +265,11 @@ const Results = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-lg text-foreground truncate">{match.team1?.name || 'TBD'}</p>
+              <p className="font-bold text-lg text-foreground truncate">{match.team1?.name || t('common.tbd')}</p>
               {isTeam1Winner && (
                 <div className="flex items-center gap-1 text-yellow-400">
                   <Trophy className="w-4 h-4" />
-                  <span className="text-xs font-medium">Zwycięzca</span>
+                  <span className="text-xs font-medium">{t('results.winner')}</span>
                 </div>
               )}
             </div>
@@ -279,18 +283,18 @@ const Results = () => {
               <span className={isTeam2Winner ? 'text-green-400' : ''}>{match.team2_score ?? 0}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(new Date(match.scheduled_at), 'd MMM yyyy, HH:mm', { locale: pl })}
+              {format(new Date(match.scheduled_at), 'd MMM yyyy, HH:mm', { locale: dateLocale })}
             </p>
           </div>
 
           {/* Team 2 */}
           <div className={`flex-1 flex items-center gap-4 justify-end ${isTeam2Winner ? '' : (match.status === 'finished' ? 'opacity-50' : '')}`}>
             <div className="flex-1 min-w-0 text-right">
-              <p className="font-bold text-lg text-foreground truncate">{match.team2?.name || 'TBD'}</p>
+              <p className="font-bold text-lg text-foreground truncate">{match.team2?.name || t('common.tbd')}</p>
               {isTeam2Winner && (
                 <div className="flex items-center gap-1 text-yellow-400 justify-end">
                   <Trophy className="w-4 h-4" />
-                  <span className="text-xs font-medium">Zwycięzca</span>
+                  <span className="text-xs font-medium">{t('results.winner')}</span>
                 </div>
               )}
             </div>
@@ -312,8 +316,8 @@ const Results = () => {
   return (
     <Layout>
       <HeroSection
-        title="Wyniki meczów"
-        subtitle="Sprawdź wszystkie zakończone mecze i rezultaty rozgrywek na żywo"
+        title={t('results.title')}
+        subtitle={t('results.subtitle')}
         size="sm"
       />
 
@@ -330,7 +334,7 @@ const Results = () => {
                 <div className="mb-12">
                   <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
                     <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                    Mecze na żywo
+                    {t('results.live_matches')}
                   </h2>
                   <div className="grid gap-4">
                     {liveMatches.map((match) => (
@@ -343,7 +347,7 @@ const Results = () => {
               {/* Finished Matches */}
               {finishedMatches.length > 0 && (
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground mb-6">Zakończone mecze</h2>
+                  <h2 className="text-2xl font-bold text-foreground mb-6">{t('results.finished_matches')}</h2>
                   <div className="grid gap-4">
                     {finishedMatches.map((match, index) => (
                       <div
@@ -362,7 +366,7 @@ const Results = () => {
                 <div className="text-center py-16">
                   <Trophy className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
                   <p className="text-muted-foreground text-lg">
-                    Brak zakończonych meczów. Turniej jeszcze się nie rozpoczął!
+                    {t('results.no_matches')}
                   </p>
                 </div>
               )}

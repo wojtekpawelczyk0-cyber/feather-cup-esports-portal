@@ -1,3 +1,5 @@
+import { useLanguage } from '@/contexts/LanguageContext';
+
 interface Sponsor {
   id: string;
   name: string;
@@ -9,6 +11,7 @@ interface SponsorSliderProps {
 }
 
 export const SponsorSlider = ({ sponsors }: SponsorSliderProps) => {
+  const { t } = useLanguage();
   // Duplicate sponsors for seamless infinite scroll
   const duplicatedSponsors = [...sponsors, ...sponsors];
 
@@ -16,7 +19,7 @@ export const SponsorSlider = ({ sponsors }: SponsorSliderProps) => {
     <section className="py-16 overflow-hidden border-t border-border/50">
       <div className="container max-w-6xl mx-auto px-4 mb-8">
         <h3 className="text-center text-muted-foreground text-sm font-medium uppercase tracking-widest">
-          Nasi Sponsorzy
+          {t('home.sponsors')}
         </h3>
       </div>
 
