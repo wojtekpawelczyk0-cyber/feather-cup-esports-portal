@@ -235,38 +235,7 @@ const MyTeam = () => {
               <p className="text-muted-foreground mb-6">{t('myteam.steam_required_desc')}</p>
               <Button variant="hero" asChild><Link to="/konto"><Link2 className="w-4 h-4 mr-2" />{t('myteam.connect_steam')}</Link></Button>
             </div>
-          ) : teamsLimitReached ? (
-            <div className="glass-card p-8 text-center border-2 border-destructive/30">
-              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
-              <h2 className="text-2xl font-bold mb-2">{t('myteam.registration_closed')}</h2>
-              <p className="text-muted-foreground mb-4">{t('myteam.max_teams_reached')} ({teamsLimitInfo.current}/{teamsLimitInfo.max}).</p>
-              <p className="text-sm text-muted-foreground">{t('myteam.follow_us')}</p>
-            </div>
-          ) : !team ? (
-            <div className="glass-card p-8 text-center">
-              {!showCreateForm ? (
-                <>
-                  <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                  <h2 className="text-2xl font-bold mb-2">{t('myteam.no_team')}</h2>
-                  <p className="text-muted-foreground mb-4">{t('myteam.create_team_desc')}</p>
-                  <p className="text-sm text-muted-foreground mb-6">{t('myteam.registered_teams')}: {teamsLimitInfo.current}/{teamsLimitInfo.max}</p>
-                  <Button variant="hero" onClick={() => setShowCreateForm(true)}><Plus className="w-4 h-4 mr-2" />{t('myteam.create_team')}</Button>
-                </>
-              ) : (
-                <div className="max-w-md mx-auto">
-                  <h2 className="text-2xl font-bold mb-2">{t('myteam.new_team')}</h2>
-                  <p className="text-muted-foreground mb-6 text-sm">{t('myteam.payment_redirect')}</p>
-                  <div className="space-y-4">
-                    <div className="space-y-2 text-left"><Label>{t('myteam.team_name')}</Label><Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder={t('myteam.team_name_placeholder')} className="bg-secondary/50" /></div>
-                    <div className="flex gap-3 justify-center">
-                      <Button variant="ghost" onClick={() => setShowCreateForm(false)}>{t('myteam.cancel')}</Button>
-                      <Button variant="hero" onClick={createTeam} disabled={!newTeamName.trim() || saving}>{saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CreditCard className="w-4 h-4 mr-2" />}{t('myteam.create_and_pay')}</Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
+          ) : team ? (
             <>
               <div className="glass-card p-6 mb-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -320,6 +289,37 @@ const MyTeam = () => {
                 )}
               </div>
             </>
+          ) : teamsLimitReached ? (
+            <div className="glass-card p-8 text-center border-2 border-destructive/30">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
+              <h2 className="text-2xl font-bold mb-2">{t('myteam.registration_closed')}</h2>
+              <p className="text-muted-foreground mb-4">{t('myteam.max_teams_reached')} ({teamsLimitInfo.current}/{teamsLimitInfo.max}).</p>
+              <p className="text-sm text-muted-foreground">{t('myteam.follow_us')}</p>
+            </div>
+          ) : (
+            <div className="glass-card p-8 text-center">
+              {!showCreateForm ? (
+                <>
+                  <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h2 className="text-2xl font-bold mb-2">{t('myteam.no_team')}</h2>
+                  <p className="text-muted-foreground mb-4">{t('myteam.create_team_desc')}</p>
+                  <p className="text-sm text-muted-foreground mb-6">{t('myteam.registered_teams')}: {teamsLimitInfo.current}/{teamsLimitInfo.max}</p>
+                  <Button variant="hero" onClick={() => setShowCreateForm(true)}><Plus className="w-4 h-4 mr-2" />{t('myteam.create_team')}</Button>
+                </>
+              ) : (
+                <div className="max-w-md mx-auto">
+                  <h2 className="text-2xl font-bold mb-2">{t('myteam.new_team')}</h2>
+                  <p className="text-muted-foreground mb-6 text-sm">{t('myteam.payment_redirect')}</p>
+                  <div className="space-y-4">
+                    <div className="space-y-2 text-left"><Label>{t('myteam.team_name')}</Label><Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder={t('myteam.team_name_placeholder')} className="bg-secondary/50" /></div>
+                    <div className="flex gap-3 justify-center">
+                      <Button variant="ghost" onClick={() => setShowCreateForm(false)}>{t('myteam.cancel')}</Button>
+                      <Button variant="hero" onClick={createTeam} disabled={!newTeamName.trim() || saving}>{saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CreditCard className="w-4 h-4 mr-2" />}{t('myteam.create_and_pay')}</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </section>
