@@ -56,7 +56,7 @@ const AdminSwiss = () => {
   const fetchData = async () => {
     try {
       const [teamsRes, matchesRes] = await Promise.all([
-        supabase.from('teams').select('id, name, logo_url, status').eq('status', 'registered'),
+        supabase.from('teams').select('id, name, logo_url, status').in('status', ['registered', 'ready']),
         supabase.from('matches').select('*').not('swiss_round', 'is', null).order('swiss_round').order('scheduled_at'),
       ]);
 
