@@ -21,21 +21,37 @@ interface Team {
   members?: TeamMember[];
 }
 
+interface TeamWithMemberCount extends Team {
+  memberCount: number;
+}
+
 export const useTeams = () => {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamWithMemberCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTeams = async () => {
       try {
-        const { data, error: fetchError } = await supabase
+        // Fetch teams with member count using a join
+        const { data: teamsData, error: teamsError } = await supabase
           .from('teams')
-          .select('*')
+          .select(`
+            *,
+            team_members(id)
+          `)
           .order('name', { ascending: true });
 
-        if (fetchError) throw fetchError;
-        setTeams(data || []);
+        if (teamsError) throw teamsError;
+
+        // Map teams with their member counts
+        const teamsWithCounts = (teamsData || []).map((team: any) => ({
+          ...team,
+          memberCount: team.team_members?.length || 0,
+          team_members: undefined, // Remove the nested array
+        }));
+
+        setTeams(teamsWithCounts);
       } catch (err: any) {
         setError(err.message);
       } finally {
