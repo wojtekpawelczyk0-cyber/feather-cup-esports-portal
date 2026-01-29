@@ -35,7 +35,7 @@ const Teams = () => {
                     id={team.id}
                     name={team.name}
                     logo={team.logo_url || undefined}
-                    memberCount={0}
+                    memberCount={team.memberCount}
                     status={team.status === 'registered' ? 'ready' : team.status}
                   />
                 </div>
