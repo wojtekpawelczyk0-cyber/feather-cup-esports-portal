@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Trophy, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,154 +23,142 @@ interface SwissMatch {
   team2?: Team | null;
 }
 
-interface MatchCardProps {
-  match: SwissMatch;
-  showDate?: boolean;
-  format?: string;
-}
-
-const MatchCard = ({ match, showDate = true, format = 'Bo1' }: MatchCardProps) => {
+// Match card for Swiss bracket
+const SwissMatchCard = ({ 
+  match, 
+  matchRef 
+}: { 
+  match: SwissMatch; 
+  matchRef?: React.RefObject<HTMLDivElement>;
+}) => {
   const isFinished = match.status === 'finished';
+  const isLive = match.status === 'live';
   const team1Won = isFinished && match.winner_id === match.team1_id;
   const team2Won = isFinished && match.winner_id === match.team2_id;
 
   return (
-    <div className="bg-card border border-border rounded-md overflow-hidden min-w-[180px]">
+    <div 
+      ref={matchRef}
+      className={cn(
+        "bg-card/80 backdrop-blur border rounded-lg overflow-hidden w-[200px] shadow-lg transition-all duration-200",
+        isLive && "border-orange-500 ring-1 ring-orange-500/50",
+        isFinished && "border-border/50",
+        !isFinished && !isLive && "border-border"
+      )}
+    >
       {/* Team 1 */}
       <div className={cn(
-        'flex items-center justify-between px-3 py-2 border-b border-border/50',
-        team1Won && 'bg-primary/10',
-        isFinished && !team1Won && 'opacity-50'
+        'flex items-center justify-between px-3 py-2',
+        team1Won && 'bg-primary/15',
+        isFinished && !team1Won && 'opacity-60'
       )}>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {match.team1?.logo_url ? (
-            <img src={match.team1.logo_url} alt="" className="w-5 h-5 rounded object-cover" />
+            <img src={match.team1.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
           ) : (
-            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-bold">
+            <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-xs font-bold text-foreground">
               {match.team1?.name?.charAt(0) || '?'}
             </div>
           )}
-          <span className="text-sm font-medium truncate text-foreground">
+          <span className={cn(
+            "text-sm font-medium truncate",
+            team1Won ? "text-primary" : "text-foreground"
+          )}>
             {match.team1?.name || 'TBD'}
           </span>
+          {team1Won && <Trophy className="w-3 h-3 text-primary flex-shrink-0" />}
         </div>
-        {isFinished && (
-          <span className={cn('text-sm font-bold ml-2', team1Won ? 'text-primary' : 'text-muted-foreground')}>
-            {match.team1_score ?? 0}
-          </span>
-        )}
+        <span className={cn(
+          'text-sm font-bold ml-2 min-w-[20px] text-right',
+          team1Won ? 'text-primary' : 'text-muted-foreground'
+        )}>
+          {isFinished || isLive ? (match.team1_score ?? 0) : '-'}
+        </span>
       </div>
 
-      {/* VS divider */}
-      <div className="flex items-center justify-center py-0.5 bg-secondary/30">
-        <span className="text-xs text-muted-foreground font-medium">VS</span>
-      </div>
+      {/* Divider */}
+      <div className="h-px bg-border/30" />
 
       {/* Team 2 */}
       <div className={cn(
         'flex items-center justify-between px-3 py-2',
-        team2Won && 'bg-primary/10',
-        isFinished && !team2Won && 'opacity-50'
+        team2Won && 'bg-primary/15',
+        isFinished && !team2Won && 'opacity-60'
       )}>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {match.team2?.logo_url ? (
-            <img src={match.team2.logo_url} alt="" className="w-5 h-5 rounded object-cover" />
+            <img src={match.team2.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
           ) : (
-            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-bold">
+            <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-xs font-bold text-foreground">
               {match.team2?.name?.charAt(0) || '?'}
             </div>
           )}
-          <span className="text-sm font-medium truncate text-foreground">
+          <span className={cn(
+            "text-sm font-medium truncate",
+            team2Won ? "text-primary" : "text-foreground"
+          )}>
             {match.team2?.name || 'TBD'}
           </span>
+          {team2Won && <Trophy className="w-3 h-3 text-primary flex-shrink-0" />}
         </div>
-        {isFinished && (
-          <span className={cn('text-sm font-bold ml-2', team2Won ? 'text-primary' : 'text-muted-foreground')}>
-            {match.team2_score ?? 0}
-          </span>
-        )}
-      </div>
-
-      {/* Footer */}
-      {showDate && (
-        <div className="px-3 py-1.5 bg-secondary/20 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{format}</span>
-          <span>
-            {match.status === 'live' ? (
-              <span className="text-red-400 font-medium">● LIVE</span>
-            ) : match.status === 'finished' ? (
-              'Zakończony'
-            ) : (
-              new Date(match.scheduled_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
-            )}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface RecordColumnProps {
-  title: string;
-  wins: number;
-  losses: number;
-  matches: SwissMatch[];
-  isAdvance?: boolean;
-  isEliminated?: boolean;
-  advanceLabel?: string;
-  format?: string;
-}
-
-const RecordColumn = ({ 
-  title, 
-  matches, 
-  isAdvance, 
-  isEliminated, 
-  advanceLabel,
-  format = 'Bo1'
-}: RecordColumnProps) => {
-  return (
-    <div className="flex flex-col items-center">
-      {/* Header */}
-      <div className={cn(
-        'px-4 py-2 rounded-md mb-3 font-semibold text-sm',
-        isAdvance && 'bg-primary text-primary-foreground',
-        isEliminated && 'bg-destructive/20 text-destructive',
-        !isAdvance && !isEliminated && 'bg-secondary text-foreground'
-      )}>
-        {title}
-      </div>
-
-      {/* Advance/Eliminate label */}
-      {(isAdvance || isEliminated) && (
-        <div className={cn(
-          'px-3 py-1.5 rounded text-xs font-semibold mb-3',
-          isAdvance && 'bg-primary/20 text-primary',
-          isEliminated && 'bg-destructive/10 text-destructive'
+        <span className={cn(
+          'text-sm font-bold ml-2 min-w-[20px] text-right',
+          team2Won ? 'text-primary' : 'text-muted-foreground'
         )}>
-          {isAdvance ? advanceLabel || 'AWANSUJE' : 'ODPADA'}
+          {isFinished || isLive ? (match.team2_score ?? 0) : '-'}
+        </span>
+      </div>
+
+      {/* Status footer */}
+      {isLive && (
+        <div className="px-3 py-1 bg-orange-500/20 text-center">
+          <span className="text-xs font-bold text-orange-400">● LIVE</span>
         </div>
       )}
-
-      {/* Matches */}
-      <div className="flex flex-col gap-3">
-        {matches.length > 0 ? (
-          matches.map(match => (
-            <MatchCard key={match.id} match={match} format={format} />
-          ))
-        ) : (
-          <div className="min-w-[180px] h-20 border border-dashed border-border rounded-md flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">Brak meczów</span>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
 
+// Column header showing W-L record
+const RecordHeader = ({ 
+  wins, 
+  losses, 
+  isAdvance, 
+  isEliminated,
+  label 
+}: { 
+  wins: number; 
+  losses: number; 
+  isAdvance?: boolean; 
+  isEliminated?: boolean;
+  label?: string;
+}) => (
+  <div className="flex flex-col items-center mb-4">
+    <div className={cn(
+      "px-6 py-2 rounded-lg font-bold text-lg",
+      isAdvance && "bg-primary text-primary-foreground",
+      isEliminated && "bg-destructive/30 text-destructive",
+      !isAdvance && !isEliminated && "bg-secondary/80 text-foreground"
+    )}>
+      {wins} – {losses}
+    </div>
+    {label && (
+      <div className={cn(
+        "mt-2 px-3 py-1 rounded text-xs font-semibold",
+        isAdvance && "bg-primary/20 text-primary",
+        isEliminated && "bg-destructive/20 text-destructive"
+      )}>
+        {label}
+      </div>
+    )}
+  </div>
+);
+
+// Swiss bracket visualization like LoL Worlds
 const SwissBracket = () => {
   const [matches, setMatches] = useState<SwissMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchMatches();
@@ -178,27 +166,15 @@ const SwissBracket = () => {
 
   const fetchMatches = async () => {
     try {
-      // Fetch all Swiss matches with team data
       const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
-        .select(`
-          id,
-          swiss_round,
-          team1_id,
-          team2_id,
-          team1_score,
-          team2_score,
-          winner_id,
-          status,
-          scheduled_at
-        `)
+        .select('*')
         .not('swiss_round', 'is', null)
         .order('swiss_round')
         .order('scheduled_at');
 
       if (matchesError) throw matchesError;
 
-      // Fetch teams
       const { data: teamsData } = await supabase
         .from('teams')
         .select('id, name, logo_url');
@@ -219,51 +195,52 @@ const SwissBracket = () => {
     }
   };
 
-  // Calculate team records based on completed matches
+  // Group matches by swiss round
+  const getMatchesByRound = (round: number) => matches.filter(m => m.swiss_round === round);
+
+  // Calculate team records from finished matches
   const getTeamRecords = () => {
     const records: Record<string, { wins: number; losses: number }> = {};
-
+    
     matches.filter(m => m.status === 'finished').forEach(match => {
       if (match.team1_id) {
         if (!records[match.team1_id]) records[match.team1_id] = { wins: 0, losses: 0 };
-        if (match.winner_id === match.team1_id) {
-          records[match.team1_id].wins++;
-        } else {
-          records[match.team1_id].losses++;
-        }
+        if (match.winner_id === match.team1_id) records[match.team1_id].wins++;
+        else records[match.team1_id].losses++;
       }
       if (match.team2_id) {
         if (!records[match.team2_id]) records[match.team2_id] = { wins: 0, losses: 0 };
-        if (match.winner_id === match.team2_id) {
-          records[match.team2_id].wins++;
-        } else {
-          records[match.team2_id].losses++;
-        }
+        if (match.winner_id === match.team2_id) records[match.team2_id].wins++;
+        else records[match.team2_id].losses++;
       }
     });
-
+    
     return records;
   };
 
-  // Group matches by round
-  const getMatchesByRound = (round: number) => matches.filter(m => m.swiss_round === round);
-
-  // Get format label based on round
-  const getFormat = (round: number) => {
-    if (round <= 2) return 'Bo1';
-    return 'Bo3';
-  };
-
   const records = getTeamRecords();
-  const round1 = getMatchesByRound(1);
-  const round2 = getMatchesByRound(2);
-  const round3 = getMatchesByRound(3);
-  const round4 = getMatchesByRound(4);
-  const round5 = getMatchesByRound(5);
-
-  // Get advancing and eliminated teams
   const advancedTeams = Object.entries(records).filter(([_, r]) => r.wins >= 3);
   const eliminatedTeams = Object.entries(records).filter(([_, r]) => r.losses >= 3);
+
+  // Group matches by their W-L stage
+  const round1 = getMatchesByRound(1); // 0-0 matches
+  const round2 = getMatchesByRound(2); // 1-0 and 0-1 matches
+  const round3 = getMatchesByRound(3); // 2-0, 1-1, 0-2 matches
+  const round4 = getMatchesByRound(4); // 2-1, 1-2 matches
+  const round5 = getMatchesByRound(5); // 2-2 matches
+
+  // Split round 2 into winners (1-0) and losers (0-1)
+  const round2Upper = round2.slice(0, Math.ceil(round2.length / 2));
+  const round2Lower = round2.slice(Math.ceil(round2.length / 2));
+
+  // Split round 3
+  const round3_20 = round3.slice(0, Math.ceil(round3.length / 4)); // 2-0
+  const round3_11 = round3.slice(Math.ceil(round3.length / 4), Math.ceil(round3.length * 3 / 4)); // 1-1
+  const round3_02 = round3.slice(Math.ceil(round3.length * 3 / 4)); // 0-2
+
+  // Split round 4
+  const round4_21 = round4.slice(0, Math.ceil(round4.length / 2)); // 2-1
+  const round4_12 = round4.slice(Math.ceil(round4.length / 2)); // 1-2
 
   if (loading) {
     return (
@@ -278,186 +255,200 @@ const SwissBracket = () => {
       <div className="text-center py-12">
         <Trophy className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
         <p className="text-muted-foreground">Faza szwajcarska nie została jeszcze rozpoczęta.</p>
-        <p className="text-sm text-muted-foreground/70">Administratorzy mogą wygenerować rundy w panelu admina.</p>
+        <p className="text-sm text-muted-foreground/70 mt-2">Administratorzy mogą wygenerować rundy w panelu admina.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-x-auto pb-6">
-      <div className="min-w-max p-4">
-        {/* Header */}
+    <div className="w-full overflow-x-auto pb-6" ref={containerRef}>
+      <div className="min-w-max p-6">
+        {/* Title */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <Trophy className="w-8 h-8 text-primary" />
           <h2 className="text-2xl font-bold text-foreground">SWISS STAGE</h2>
         </div>
 
-        {/* Swiss bracket grid */}
-        <div className="flex gap-6 justify-center">
-          {/* Round 1: 0-0 */}
-          <RecordColumn
-            title="0 – 0"
-            wins={0}
-            losses={0}
-            matches={round1}
-            format={getFormat(1)}
-          />
+        {/* Swiss bracket - horizontal layout with connecting visual flow */}
+        <div className="relative">
+          {/* SVG for connecting lines */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" style={{ minHeight: '800px' }}>
+            <defs>
+              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+          </svg>
 
-          {/* Round 2: 1-0 and 0-1 */}
-          <div className="flex flex-col gap-8">
-            <RecordColumn
-              title="1 – 0"
-              wins={1}
-              losses={0}
-              matches={round2.slice(0, Math.ceil(round2.length / 2))}
-              format={getFormat(2)}
-            />
-            <RecordColumn
-              title="0 – 1"
-              wins={0}
-              losses={1}
-              matches={round2.slice(Math.ceil(round2.length / 2))}
-              format={getFormat(2)}
-            />
-          </div>
+          {/* Grid layout for Swiss stages */}
+          <div className="grid grid-cols-7 gap-8 relative z-10">
+            {/* Column 1: 0-0 (Round 1) */}
+            <div className="flex flex-col items-center">
+              <RecordHeader wins={0} losses={0} />
+              <div className="flex flex-col gap-3">
+                {round1.map(match => (
+                  <SwissMatchCard key={match.id} match={match} />
+                ))}
+                {round1.length === 0 && (
+                  <div className="w-[200px] h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground">Oczekuje</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
-          {/* Round 3: 2-0, 1-1, 0-2 */}
-          <div className="flex flex-col gap-6">
-            <RecordColumn
-              title="2 – 0"
-              wins={2}
-              losses={0}
-              matches={round3.slice(0, Math.ceil(round3.length / 4))}
-              format={getFormat(3)}
-            />
-            <RecordColumn
-              title="1 – 1"
-              wins={1}
-              losses={1}
-              matches={round3.slice(Math.ceil(round3.length / 4), Math.ceil(round3.length * 3 / 4))}
-              format={getFormat(3)}
-            />
-            <RecordColumn
-              title="0 – 2"
-              wins={0}
-              losses={2}
-              matches={round3.slice(Math.ceil(round3.length * 3 / 4))}
-              format={getFormat(3)}
-            />
-          </div>
+            {/* Column 2: 1-0 (Upper) and 0-1 (Lower) */}
+            <div className="flex flex-col items-center gap-12">
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={1} losses={0} />
+                <div className="flex flex-col gap-3">
+                  {round2Upper.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={0} losses={1} />
+                <div className="flex flex-col gap-3">
+                  {round2Lower.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+            </div>
 
-          {/* Round 4: 3-0 (Advance), 2-1, 1-2, 0-3 (Eliminated) */}
-          <div className="flex flex-col gap-6">
-            <RecordColumn
-              title="3 – 0"
-              wins={3}
-              losses={0}
-              matches={[]}
-              isAdvance
-              advanceLabel="1-2 miejsce"
-              format={getFormat(4)}
-            />
-            <RecordColumn
-              title="2 – 1"
-              wins={2}
-              losses={1}
-              matches={round4.slice(0, Math.ceil(round4.length / 2))}
-              format={getFormat(4)}
-            />
-            <RecordColumn
-              title="1 – 2"
-              wins={1}
-              losses={2}
-              matches={round4.slice(Math.ceil(round4.length / 2))}
-              format={getFormat(4)}
-            />
-            <RecordColumn
-              title="0 – 3"
-              wins={0}
-              losses={3}
-              matches={[]}
-              isEliminated
-              format={getFormat(4)}
-            />
-          </div>
+            {/* Column 3: 2-0, 1-1, 0-2 */}
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={2} losses={0} />
+                <div className="flex flex-col gap-3">
+                  {round3_20.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={1} losses={1} />
+                <div className="flex flex-col gap-3">
+                  {round3_11.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={0} losses={2} />
+                <div className="flex flex-col gap-3">
+                  {round3_02.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+            </div>
 
-          {/* Round 5: 3-1 (Advance), 2-2, 1-3 (Eliminated) */}
-          <div className="flex flex-col gap-6">
-            <RecordColumn
-              title="3 – 1"
-              wins={3}
-              losses={1}
-              matches={[]}
-              isAdvance
-              advanceLabel="3-5 miejsce"
-              format={getFormat(5)}
-            />
-            <RecordColumn
-              title="2 – 2"
-              wins={2}
-              losses={2}
-              matches={round5}
-              format={getFormat(5)}
-            />
-            <RecordColumn
-              title="1 – 3"
-              wins={1}
-              losses={3}
-              matches={[]}
-              isEliminated
-              format={getFormat(5)}
-            />
-          </div>
+            {/* Column 4: 3-0 (Advance), 2-1, 1-2, 0-3 (Eliminated) */}
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={3} losses={0} isAdvance label="AWANSUJE" />
+                <div className="w-[200px] min-h-[60px] border-2 border-primary/50 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-primary font-semibold">Miejsce 1-2</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={2} losses={1} />
+                <div className="flex flex-col gap-3">
+                  {round4_21.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={1} losses={2} />
+                <div className="flex flex-col gap-3">
+                  {round4_12.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={0} losses={3} isEliminated label="ODPADA" />
+                <div className="w-[200px] min-h-[60px] border-2 border-destructive/50 bg-destructive/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-destructive font-semibold">Eliminacja</span>
+                </div>
+              </div>
+            </div>
 
-          {/* Final outcomes: 3-2 (Advance), 2-3 (Eliminated) */}
-          <div className="flex flex-col gap-6">
-            <RecordColumn
-              title="3 – 2"
-              wins={3}
-              losses={2}
-              matches={[]}
-              isAdvance
-              advanceLabel="6-8 miejsce"
-              format="Bo3"
-            />
-            <RecordColumn
-              title="2 – 3"
-              wins={2}
-              losses={3}
-              matches={[]}
-              isEliminated
-              format="Bo3"
-            />
+            {/* Column 5: 3-1 (Advance), 2-2, 1-3 (Eliminated) */}
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={3} losses={1} isAdvance label="AWANSUJE" />
+                <div className="w-[200px] min-h-[60px] border-2 border-primary/50 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-primary font-semibold">Miejsce 3-4</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={2} losses={2} />
+                <div className="flex flex-col gap-3">
+                  {round5.map(match => (
+                    <SwissMatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={1} losses={3} isEliminated label="ODPADA" />
+                <div className="w-[200px] min-h-[60px] border-2 border-destructive/50 bg-destructive/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-destructive font-semibold">Eliminacja</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 6: 3-2 (Advance), 2-3 (Eliminated) */}
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex flex-col items-center">
+                <RecordHeader wins={3} losses={2} isAdvance label="AWANSUJE" />
+                <div className="w-[200px] min-h-[60px] border-2 border-primary/50 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-primary font-semibold">Miejsce 5-8</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center mt-auto">
+                <RecordHeader wins={2} losses={3} isEliminated label="ODPADA" />
+                <div className="w-[200px] min-h-[60px] border-2 border-destructive/50 bg-destructive/10 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-destructive font-semibold">Eliminacja</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 7: Summary */}
+            <div className="flex flex-col items-center justify-center gap-6">
+              <div className="glass-card p-6 rounded-xl text-center">
+                <Trophy className="w-10 h-10 text-primary mx-auto mb-3" />
+                <div className="text-3xl font-bold text-primary mb-1">{advancedTeams.length}</div>
+                <div className="text-sm text-muted-foreground">Awansowało do playoff</div>
+                <div className="text-xs text-muted-foreground/70 mt-1">z 8 miejsc</div>
+              </div>
+              <div className="glass-card p-6 rounded-xl text-center">
+                <Users className="w-10 h-10 text-destructive mx-auto mb-3" />
+                <div className="text-3xl font-bold text-destructive mb-1">{eliminatedTeams.length}</div>
+                <div className="text-sm text-muted-foreground">Odpadło</div>
+                <div className="text-xs text-muted-foreground/70 mt-1">z {matches.length > 0 ? 16 : 0} drużyn</div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-6 mt-8 text-sm">
+        <div className="flex items-center justify-center gap-8 mt-10 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-primary" />
-            <span className="text-muted-foreground">Awansuje do playoff</span>
+            <span className="text-muted-foreground">Awansuje do Playoff</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-destructive/30" />
+            <div className="w-4 h-4 rounded bg-destructive/50" />
             <span className="text-muted-foreground">Odpada z turnieju</span>
           </div>
-        </div>
-
-        {/* Summary */}
-        <div className="flex items-center justify-center gap-8 mt-6">
-          <div className="glass-card px-6 py-3 flex items-center gap-3">
-            <Trophy className="w-5 h-5 text-primary" />
-            <div>
-              <div className="text-sm text-muted-foreground">Awansowało</div>
-              <div className="text-xl font-bold text-primary">{advancedTeams.length}/8</div>
-            </div>
-          </div>
-          <div className="glass-card px-6 py-3 flex items-center gap-3">
-            <Users className="w-5 h-5 text-destructive" />
-            <div>
-              <div className="text-sm text-muted-foreground">Odpadło</div>
-              <div className="text-xl font-bold text-destructive">{eliminatedTeams.length}/24</div>
-            </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded border-2 border-orange-500" />
+            <span className="text-muted-foreground">Mecz na żywo</span>
           </div>
         </div>
       </div>
