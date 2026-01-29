@@ -272,31 +272,36 @@ const SwissBracket = () => {
   const qualifiedTeams = Object.entries(records).filter(([_, r]) => r.wins >= 3).map(([_, r]) => r.team);
   const eliminatedTeams = Object.entries(records).filter(([_, r]) => r.losses >= 3).map(([_, r]) => r.team);
 
-  // Group matches by their W-L stage
-  const round1 = getMatchesByRound(1);
-  const round2 = getMatchesByRound(2);
-  const round3 = getMatchesByRound(3);
-  const round4 = getMatchesByRound(4);
-  const round5 = getMatchesByRound(5);
+  // Group matches by swiss round (for 32 teams)
+  const round1 = getMatchesByRound(1); // 16 matches (0-0)
+  const round2 = getMatchesByRound(2); // 16 matches total
+  const round3 = getMatchesByRound(3); // 16 matches total
+  const round4 = getMatchesByRound(4); // 8 matches total
+  const round5 = getMatchesByRound(5); // 8 matches total
 
-  // Split rounds into upper/lower brackets
-  const round2Upper = round2.slice(0, Math.ceil(round2.length / 2));
-  const round2Lower = round2.slice(Math.ceil(round2.length / 2));
+  // Split round 2 into 1-0 and 0-1 (8 each for 32 teams)
+  const round2_10 = round2.slice(0, 8);
+  const round2_01 = round2.slice(8, 16);
   
-  const round3_20 = round3.slice(0, Math.ceil(round3.length / 4));
-  const round3_11 = round3.slice(Math.ceil(round3.length / 4), Math.ceil(round3.length * 3 / 4));
-  const round3_02 = round3.slice(Math.ceil(round3.length * 3 / 4));
+  // Split round 3 into 2-0, 1-1, 0-2 (4, 8, 4 for 32 teams)
+  const round3_20 = round3.slice(0, 4);
+  const round3_11 = round3.slice(4, 12);
+  const round3_02 = round3.slice(12, 16);
   
-  const round4_21 = round4.slice(0, Math.ceil(round4.length / 2));
-  const round4_12 = round4.slice(Math.ceil(round4.length / 2));
+  // Split round 4 into 2-1 and 1-2 (4 each for 32 teams)
+  const round4_21 = round4.slice(0, 4);
+  const round4_12 = round4.slice(4, 8);
 
-  // Teams that went 3-0, 3-1, 3-2
-  const teams30 = getTeamsByRecord(3, 0);
-  const teams31 = getTeamsByRecord(3, 1);
-  const teams32 = getTeamsByRecord(3, 2);
-  const teams03 = getTeamsByRecord(0, 3);
-  const teams13 = getTeamsByRecord(1, 3);
-  const teams23 = getTeamsByRecord(2, 3);
+  // Round 5 is 2-2 (8 matches for 32 teams)
+  const round5_22 = round5;
+
+  // Teams that went 3-0, 3-1, 3-2 (qualified) and 0-3, 1-3, 2-3 (eliminated)
+  const teams30 = getTeamsByRecord(3, 0); // 4 teams
+  const teams31 = getTeamsByRecord(3, 1); // 4 teams
+  const teams32 = getTeamsByRecord(3, 2); // 8 teams
+  const teams03 = getTeamsByRecord(0, 3); // 4 teams
+  const teams13 = getTeamsByRecord(1, 3); // 4 teams
+  const teams23 = getTeamsByRecord(2, 3); // 8 teams
 
   if (loading) {
     return (
@@ -367,8 +372,8 @@ const SwissBracket = () => {
 
             {/* Column 2: 1-0 and 0-1 */}
             <div className="flex flex-col gap-6">
-              <MatchColumn header="1 - 0" matches={round2Upper} />
-              <MatchColumn header="0 - 1" matches={round2Lower} />
+              <MatchColumn header="1 - 0" matches={round2_10} />
+              <MatchColumn header="0 - 1" matches={round2_01} />
             </div>
 
             {/* Connector */}
@@ -422,7 +427,7 @@ const SwissBracket = () => {
                 resultType="qualified"
                 teams={teams31}
               />
-              <MatchColumn header="2 - 2" matches={round5} />
+              <MatchColumn header="2 - 2" matches={round5_22} />
               <MatchColumn 
                 header="ELIMINATED" 
                 headerType="eliminated"
@@ -479,14 +484,14 @@ const SwissBracket = () => {
             <Trophy className="w-6 h-6 text-emerald-500" />
             <div>
               <div className="text-xs text-muted-foreground">Awansowało</div>
-              <div className="text-xl font-bold text-emerald-500">{qualifiedTeams.length}/8</div>
+              <div className="text-xl font-bold text-emerald-500">{qualifiedTeams.length}/16</div>
             </div>
           </div>
           <div className="bg-[#1a2744] px-6 py-3 rounded-lg flex items-center gap-3 border border-[#2a3a5a]">
             <div className="w-6 h-6 text-red-500 flex items-center justify-center font-bold">✕</div>
             <div>
               <div className="text-xs text-muted-foreground">Odpadło</div>
-              <div className="text-xl font-bold text-red-500">{eliminatedTeams.length}/8</div>
+              <div className="text-xl font-bold text-red-500">{eliminatedTeams.length}/16</div>
             </div>
           </div>
         </div>
