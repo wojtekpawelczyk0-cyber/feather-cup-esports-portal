@@ -118,7 +118,7 @@ const Matches = () => {
               className="gap-2"
             >
               <Medal className="w-4 h-4" />
-              Ranking
+              Tabela szwajcarska
             </Button>
             <Button
               variant={view === 'list' ? 'default' : 'outline'}
@@ -155,7 +155,7 @@ const Matches = () => {
                       <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                       <h3 className="text-xl font-semibold text-foreground mb-2">Brak danych</h3>
                       <p className="text-muted-foreground">
-                        Ranking pojawi się po rozegraniu pierwszych meczów fazy szwajcarskiej.
+                        Tabela pojawi się po rozegraniu pierwszych meczów fazy szwajcarskiej.
                       </p>
                     </div>
                   ) : (
@@ -201,7 +201,7 @@ const Matches = () => {
                       <div className="glass-card overflow-hidden">
                         <div className="p-4 border-b border-border flex items-center gap-2">
                           <TrendingUp className="w-5 h-5 text-primary" />
-                          <h3 className="font-semibold text-foreground">Pełny ranking</h3>
+                          <h3 className="font-semibold text-foreground">Tabela szwajcarska</h3>
                           {currentRound > 0 && (
                             <span className="text-sm text-muted-foreground ml-2">
                               (po rundzie {currentRound})
