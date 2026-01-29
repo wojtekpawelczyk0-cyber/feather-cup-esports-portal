@@ -22,7 +22,7 @@ interface BracketMatch {
 }
 
 interface TournamentBracketProps {
-  teamCount?: 16 | 32;
+  teamCount?: 16 | 32 | 64;
 }
 
 const getRoundName = (roundNumber: number, totalRounds: number): string => {
@@ -33,15 +33,16 @@ const getRoundName = (roundNumber: number, totalRounds: number): string => {
     case 3: return 'Ćwierćfinały';
     case 4: return '1/8 Finału';
     case 5: return '1/16 Finału';
+    case 6: return '1/32 Finału';
     default: return `Runda ${roundNumber}`;
   }
 };
 
-const TournamentBracket = ({ teamCount = 16 }: TournamentBracketProps) => {
+const TournamentBracket = ({ teamCount = 32 }: TournamentBracketProps) => {
   const [matches, setMatches] = useState<BracketMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const totalRounds = teamCount === 32 ? 5 : 4;
+  const totalRounds = teamCount === 64 ? 6 : teamCount === 32 ? 5 : 4;
 
   useEffect(() => {
     fetchBracketMatches();

@@ -27,7 +27,7 @@ interface BracketMatch {
 const AdminBracket = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<BracketMatch[]>([]);
-  const [bracketSize, setBracketSize] = useState<16 | 32>(16);
+  const [bracketSize, setBracketSize] = useState<16 | 32 | 64>(32);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [defaultDate, setDefaultDate] = useState('');
@@ -81,7 +81,7 @@ const AdminBracket = () => {
       const shuffledTeams = [...teams].sort(() => Math.random() - 0.5).slice(0, bracketSize);
 
       // Calculate rounds
-      const totalRounds = bracketSize === 32 ? 5 : 4;
+      const totalRounds = bracketSize === 64 ? 6 : bracketSize === 32 ? 5 : 4;
       const matchesPerRound: Record<number, number> = {};
       let matchCount = bracketSize / 2;
       for (let r = 1; r <= totalRounds; r++) {
@@ -113,12 +113,24 @@ const AdminBracket = () => {
           const team1Id = round === 1 ? shuffledTeams[(pos - 1) * 2]?.id : null;
           const team2Id = round === 1 ? shuffledTeams[(pos - 1) * 2 + 1]?.id : null;
 
-          const roundNames: Record<number, string> = {
-            1: bracketSize === 32 ? '1/16 Finału' : '1/8 Finału',
-            2: bracketSize === 32 ? '1/8 Finału' : 'Ćwierćfinały',
-            3: bracketSize === 32 ? 'Ćwierćfinały' : 'Półfinały',
-            4: bracketSize === 32 ? 'Półfinały' : 'Finał',
+          const roundNames: Record<number, string> = bracketSize === 64 ? {
+            1: '1/32 Finału',
+            2: '1/16 Finału',
+            3: '1/8 Finału',
+            4: 'Ćwierćfinały',
+            5: 'Półfinały',
+            6: 'Finał',
+          } : bracketSize === 32 ? {
+            1: '1/16 Finału',
+            2: '1/8 Finału',
+            3: 'Ćwierćfinały',
+            4: 'Półfinały',
             5: 'Finał',
+          } : {
+            1: '1/8 Finału',
+            2: 'Ćwierćfinały',
+            3: 'Półfinały',
+            4: 'Finał',
           };
 
           const { data: newMatch, error: insertError } = await supabase
@@ -213,13 +225,14 @@ const AdminBracket = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">Rozmiar drabinki</label>
-            <Select value={String(bracketSize)} onValueChange={(v) => setBracketSize(Number(v) as 16 | 32)}>
+            <Select value={String(bracketSize)} onValueChange={(v) => setBracketSize(Number(v) as 16 | 32 | 64)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="16">16 drużyn</SelectItem>
                 <SelectItem value="32">32 drużyny</SelectItem>
+                <SelectItem value="64">64 drużyny</SelectItem>
               </SelectContent>
             </Select>
           </div>
