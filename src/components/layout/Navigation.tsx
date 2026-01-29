@@ -19,6 +19,7 @@ export const Navigation = () => {
     { name: t('nav.matches'), path: '/mecze' },
     { name: t('nav.results'), path: '/wyniki' },
     { name: t('nav.teams'), path: '/druzyny' },
+    { name: 'Ranking', path: '/ranking' },
     { name: t('nav.contact'), path: '/kontakt' },
   ];
 
