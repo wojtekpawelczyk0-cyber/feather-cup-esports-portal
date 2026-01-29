@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { lazy } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,6 +19,7 @@ import SteamCallback from "./pages/SteamCallback";
 import Account from "./pages/Account";
 import MyTeam from "./pages/MyTeam";
 import StaticPage from "./pages/StaticPage";
+import SwissStandings from "./pages/SwissStandings";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMatches from "./pages/admin/AdminMatches";
@@ -58,6 +60,7 @@ const App = () => (
               <Route path="/mecze" element={<Matches />} />
               <Route path="/wyniki" element={<Results />} />
               <Route path="/druzyny" element={<Teams />} />
+              <Route path="/ranking" element={<SwissStandings />} />
               <Route path="/druzyny/:id" element={<TeamDetails />} />
               <Route path="/kontakt" element={<Contact />} />
               <Route path="/auth" element={<Auth />} />
