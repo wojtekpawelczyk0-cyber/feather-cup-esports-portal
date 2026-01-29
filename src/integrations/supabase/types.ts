@@ -21,12 +21,14 @@ export type Database = {
           commentator2_id: string | null
           created_at: string
           id: string
+          is_playoff: boolean | null
           next_match_id: string | null
           round: string | null
           round_number: number | null
           scheduled_at: string
           status: Database["public"]["Enums"]["match_status"]
           stream_url: string | null
+          swiss_round: number | null
           team1_id: string | null
           team1_score: number | null
           team2_id: string | null
@@ -40,12 +42,14 @@ export type Database = {
           commentator2_id?: string | null
           created_at?: string
           id?: string
+          is_playoff?: boolean | null
           next_match_id?: string | null
           round?: string | null
           round_number?: number | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["match_status"]
           stream_url?: string | null
+          swiss_round?: number | null
           team1_id?: string | null
           team1_score?: number | null
           team2_id?: string | null
@@ -59,12 +63,14 @@ export type Database = {
           commentator2_id?: string | null
           created_at?: string
           id?: string
+          is_playoff?: boolean | null
           next_match_id?: string | null
           round?: string | null
           round_number?: number | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["match_status"]
           stream_url?: string | null
+          swiss_round?: number | null
           team1_id?: string | null
           team1_score?: number | null
           team2_id?: string | null
@@ -84,6 +90,13 @@ export type Database = {
             foreignKeyName: "matches_team1_id_fkey"
             columns: ["team1_id"]
             isOneToOne: false
+            referencedRelation: "swiss_standings"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "matches_team1_id_fkey"
+            columns: ["team1_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -91,8 +104,22 @@ export type Database = {
             foreignKeyName: "matches_team2_id_fkey"
             columns: ["team2_id"]
             isOneToOne: false
+            referencedRelation: "swiss_standings"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "matches_team2_id_fkey"
+            columns: ["team2_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "swiss_standings"
+            referencedColumns: ["team_id"]
           },
           {
             foreignKeyName: "matches_winner_id_fkey"
@@ -253,6 +280,13 @@ export type Database = {
             foreignKeyName: "team_members_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "swiss_standings"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -371,7 +405,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      swiss_standings: {
+        Row: {
+          logo_url: string | null
+          losses: number | null
+          points: number | null
+          round_difference: number | null
+          team_id: string | null
+          team_name: string | null
+          wins: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

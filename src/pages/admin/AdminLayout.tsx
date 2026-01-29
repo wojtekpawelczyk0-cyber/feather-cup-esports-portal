@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Trophy, Calendar, Image, Settings, 
-  Shield, Loader2, ChevronRight, Mic, GitBranch, FileText 
+  Shield, Loader2, ChevronRight, Mic, GitBranch, FileText, Shuffle 
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,7 @@ interface UserRole {
 const adminLinks = [
   { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, roles: ['owner', 'admin', 'commentator', 'support'] },
   { name: 'Panel Komentatora', path: '/admin/komentator', icon: Mic, roles: ['owner', 'admin', 'commentator'] },
+  { name: 'System Szwajcarski', path: '/admin/szwajcarski', icon: Shuffle, roles: ['owner', 'admin'] },
   { name: 'Drabinka', path: '/admin/drabinka', icon: GitBranch, roles: ['owner', 'admin'] },
   { name: 'Mecze', path: '/admin/mecze', icon: Calendar, roles: ['owner', 'admin'] },
   { name: 'Drużyny', path: '/admin/druzyny', icon: Users, roles: ['owner', 'admin'] },

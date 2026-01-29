@@ -27,6 +27,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminBracket from "./pages/admin/AdminBracket";
 import AdminPages from "./pages/admin/AdminPages";
+import AdminSwiss from "./pages/admin/AdminSwiss";
 import CommentatorPanel from "./pages/admin/CommentatorPanel";
 import NotFound from "./pages/NotFound";
 
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="komentator" element={<CommentatorPanel />} />
+                <Route path="szwajcarski" element={<AdminSwiss />} />
                 <Route path="drabinka" element={<AdminBracket />} />
                 <Route path="mecze" element={<AdminMatches />} />
                 <Route path="druzyny" element={<AdminTeams />} />
