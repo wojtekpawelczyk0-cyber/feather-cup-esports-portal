@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface TournamentSettings {
@@ -9,6 +9,7 @@ interface TournamentSettings {
   prize_pool: string;
   max_teams: string;
   tournament_days: string;
+  total_matches: string;
   entry_fee: string;
   site_logo_url: string;
   // SEO settings
@@ -26,6 +27,7 @@ const defaultSettings: TournamentSettings = {
   prize_pool: '₿50K',
   max_teams: '32',
   tournament_days: '7',
+  total_matches: '64',
   entry_fee: '50',
   site_logo_url: '',
   // SEO defaults
@@ -39,32 +41,36 @@ export const useTournamentSettings = () => {
   const [settings, setSettings] = useState<TournamentSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('tournament_settings')
-          .select('key, value');
+  const fetchSettings = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tournament_settings')
+        .select('key, value');
 
-        if (error) throw error;
+      if (error) throw error;
 
-        const settingsMap: Partial<TournamentSettings> = {};
-        (data || []).forEach((s: { key: string; value: string | null }) => {
-          if (s.key in defaultSettings) {
-            (settingsMap as any)[s.key] = s.value || (defaultSettings as any)[s.key];
-          }
-        });
-        
-        setSettings({ ...defaultSettings, ...settingsMap });
-      } catch (error) {
-        console.error('Error fetching tournament settings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings();
+      const settingsMap: Partial<TournamentSettings> = {};
+      (data || []).forEach((s: { key: string; value: string | null }) => {
+        if (s.key in defaultSettings) {
+          (settingsMap as any)[s.key] = s.value || (defaultSettings as any)[s.key];
+        }
+      });
+      
+      setSettings({ ...defaultSettings, ...settingsMap });
+    } catch (error) {
+      console.error('Error fetching tournament settings:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { settings, loading };
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const refreshSettings = useCallback(async () => {
+    await fetchSettings();
+  }, [fetchSettings]);
+
+  return { settings, loading, refreshSettings };
 };

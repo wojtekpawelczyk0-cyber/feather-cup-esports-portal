@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Users, Trophy, TrendingUp, Clock, DollarSign, Eye } from 'lucide-react';
+import { Calendar, Users, Trophy, TrendingUp, Clock, DollarSign, Eye, Save, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTournamentSettings } from '@/hooks/useTournamentSettings';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import {
   ChartContainer,
   ChartTooltip,
@@ -35,9 +38,16 @@ interface DailyVisits {
   visits: number;
 }
 
+interface HomepageStats {
+  prize_pool: string;
+  max_teams: string;
+  tournament_days: string;
+  total_matches: string;
+}
+
 const AdminDashboard = () => {
   const { userRoles } = useAuth();
-  const { settings } = useTournamentSettings();
+  const { settings, refreshSettings } = useTournamentSettings();
   const isOwner = userRoles.includes('owner');
   
   const [stats, setStats] = useState<Stats>({
@@ -50,6 +60,13 @@ const AdminDashboard = () => {
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
   const [tournamentEarnings, setTournamentEarnings] = useState<TournamentEarnings | null>(null);
   const [dailyVisits, setDailyVisits] = useState<DailyVisits[]>([]);
+  const [homepageStats, setHomepageStats] = useState<HomepageStats>({
+    prize_pool: '',
+    max_teams: '',
+    tournament_days: '',
+    total_matches: '',
+  });
+  const [savingStats, setSavingStats] = useState(false);
 
   // Entry fee from settings (in grosze)
   const entryFeeInGrosze = parseInt(settings.entry_fee || '50') * 100;
@@ -62,6 +79,15 @@ const AdminDashboard = () => {
       fetchDailyVisits();
     }
   }, [isOwner, entryFeeInGrosze]);
+
+  useEffect(() => {
+    setHomepageStats({
+      prize_pool: settings.prize_pool || '10 000 PLN',
+      max_teams: settings.max_teams || '32',
+      tournament_days: settings.tournament_days || '3 dni',
+      total_matches: settings.total_matches || '64',
+    });
+  }, [settings]);
 
   const fetchStats = async () => {
     try {
@@ -163,6 +189,34 @@ const AdminDashboard = () => {
     }
   };
 
+  const saveHomepageStats = async () => {
+    setSavingStats(true);
+    try {
+      const updates = [
+        { key: 'prize_pool', value: homepageStats.prize_pool },
+        { key: 'max_teams', value: homepageStats.max_teams },
+        { key: 'tournament_days', value: homepageStats.tournament_days },
+        { key: 'total_matches', value: homepageStats.total_matches },
+      ];
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('tournament_settings')
+          .upsert({ key: update.key, value: update.value }, { onConflict: 'key' });
+        
+        if (error) throw error;
+      }
+
+      await refreshSettings();
+      toast.success('Statystyki zapisane!');
+    } catch (error) {
+      console.error('Error saving homepage stats:', error);
+      toast.error('Błąd podczas zapisywania');
+    } finally {
+      setSavingStats(false);
+    }
+  };
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('pl-PL', {
       style: 'currency',
@@ -194,86 +248,136 @@ const AdminDashboard = () => {
 
       {/* Owner Stats - Analytics & Earnings */}
       {isOwner && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Daily Visits Chart */}
-          <div className="glass-card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Eye className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">Odwiedziny (7 dni)</h2>
-            </div>
-            {dailyVisits.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[200px] w-full">
-                <AreaChart data={dailyVisits}>
-                  <defs>
-                    <linearGradient id="fillVisits" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis 
-                    dataKey="date" 
-                    tickLine={false} 
-                    axisLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    tickLine={false} 
-                    axisLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area
-                    type="monotone"
-                    dataKey="visits"
-                    stroke="hsl(var(--primary))"
-                    fill="url(#fillVisits)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ChartContainer>
-            ) : (
-              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Brak danych o odwiedzinach
+        <>
+          {/* Homepage Stats Editor */}
+          <div className="glass-card p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Statystyki na stronie głównej</h2>
               </div>
-            )}
+              <Button onClick={saveHomepageStats} disabled={savingStats} size="sm">
+                <Save className="w-4 h-4 mr-2" />
+                {savingStats ? 'Zapisywanie...' : 'Zapisz'}
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Pula nagród</label>
+                <Input
+                  value={homepageStats.prize_pool}
+                  onChange={(e) => setHomepageStats({ ...homepageStats, prize_pool: e.target.value })}
+                  placeholder="np. 10 000 PLN"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Max drużyn</label>
+                <Input
+                  value={homepageStats.max_teams}
+                  onChange={(e) => setHomepageStats({ ...homepageStats, max_teams: e.target.value })}
+                  placeholder="np. 32"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Dni turnieju</label>
+                <Input
+                  value={homepageStats.tournament_days}
+                  onChange={(e) => setHomepageStats({ ...homepageStats, tournament_days: e.target.value })}
+                  placeholder="np. 3 dni"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Liczba meczów</label>
+                <Input
+                  value={homepageStats.total_matches}
+                  onChange={(e) => setHomepageStats({ ...homepageStats, total_matches: e.target.value })}
+                  placeholder="np. 64"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Tournament Earnings */}
-          <div className="glass-card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <DollarSign className="w-5 h-5 text-green-400" />
-              <h2 className="text-lg font-semibold text-foreground">Wpływy z turnieju</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Daily Visits Chart */}
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Eye className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Odwiedziny (7 dni)</h2>
+              </div>
+              {dailyVisits.length > 0 ? (
+                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                  <AreaChart data={dailyVisits}>
+                    <defs>
+                      <linearGradient id="fillVisits" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="date" 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <YAxis 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Area
+                      type="monotone"
+                      dataKey="visits"
+                      stroke="hsl(var(--primary))"
+                      fill="url(#fillVisits)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Brak danych o odwiedzinach
+                </div>
+              )}
             </div>
-            {tournamentEarnings ? (
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                  <p className="text-sm text-muted-foreground mb-1">Łączne wpływy</p>
-                  <p className="text-3xl font-bold text-green-400">
-                    {formatCurrency(tournamentEarnings.totalEarnings, 'pln')}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                    <p className="text-sm text-muted-foreground mb-1">Opłacone drużyny</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {tournamentEarnings.paidTeams.length}
+
+            {/* Tournament Earnings */}
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-green-400" />
+                <h2 className="text-lg font-semibold text-foreground">Wpływy z turnieju</h2>
+              </div>
+              {tournamentEarnings ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                    <p className="text-sm text-muted-foreground mb-1">Łączne wpływy</p>
+                    <p className="text-3xl font-bold text-green-400">
+                      {formatCurrency(tournamentEarnings.totalEarnings, 'pln')}
                     </p>
                   </div>
-                  <div className="p-4 rounded-xl bg-secondary/50 border border-border/50">
-                    <p className="text-sm text-muted-foreground mb-1">Wpisowe</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {formatCurrency(tournamentEarnings.entryFee, 'pln')}
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                      <p className="text-sm text-muted-foreground mb-1">Opłacone drużyny</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {tournamentEarnings.paidTeams.length}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-secondary/50 border border-border/50">
+                      <p className="text-sm text-muted-foreground mb-1">Wpisowe</p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {formatCurrency(tournamentEarnings.entryFee, 'pln')}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Ładowanie...
-              </div>
-            )}
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Ładowanie...
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Payment History - Only for owners */}

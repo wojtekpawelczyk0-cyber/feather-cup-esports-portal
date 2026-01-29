@@ -50,7 +50,7 @@ const Index = () => {
     { icon: Trophy, value: settings.prize_pool, label: t('home.prize_pool') },
     { icon: Users, value: teams.length > 0 ? String(teams.length) : settings.max_teams, label: t('home.teams') },
     { icon: Calendar, value: settings.tournament_days, label: t('home.tournament_days') },
-    { icon: Zap, value: matches.length > 0 ? String(matches.length) : '64', label: t('home.matches') },
+    { icon: Zap, value: matches.length > 0 ? String(matches.length) : settings.total_matches, label: t('home.matches') },
   ];
 
   return (
