@@ -185,12 +185,15 @@
     background-clip: text;
   }
 
-  /* Sponsor slider */
+  /* Sponsor slider - infinite seamless scroll */
   .sponsor-slider {
-    @apply flex gap-8 animate-scroll;
+    display: flex;
+    gap: 2rem;
+    width: max-content;
+    animation: sponsor-scroll 30s linear infinite;
   }
 
-  @keyframes scroll {
+  @keyframes sponsor-scroll {
     0% {
       transform: translateX(0);
     }
@@ -199,8 +202,8 @@
     }
   }
 
-  .animate-scroll {
-    animation: scroll 20s linear infinite;
+  .sponsor-slider:hover {
+    animation-play-state: paused;
   }
 
   /* Page transitions */
