@@ -39,7 +39,7 @@ const AdminBracket = () => {
   const fetchData = async () => {
     try {
       const [teamsRes, matchesRes] = await Promise.all([
-        supabase.from('teams').select('id, name, status, is_paid').eq('status', 'registered'),
+        supabase.from('teams').select('id, name, status, is_paid').in('status', ['registered', 'ready']),
         supabase.from('matches').select('*').not('round_number', 'is', null).order('round_number').order('bracket_position'),
       ]);
 
