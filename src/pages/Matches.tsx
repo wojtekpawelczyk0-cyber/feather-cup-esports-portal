@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, LayoutGrid, List, Medal, Trophy, Users, TrendingUp } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Medal, Trophy, Users, TrendingUp, GitBranch } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { MatchCard } from '@/components/shared/MatchCard';
@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { format } from 'date-fns';
 import { pl, enUS } from 'date-fns/locale';
 import TournamentBracket from '@/components/bracket/TournamentBracket';
+import SwissBracket from '@/components/bracket/SwissBracket';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,7 +25,7 @@ interface Standing {
 const Matches = () => {
   const { matches, loading } = useMatches();
   const { t, language } = useLanguage();
-  const [view, setView] = useState<'bracket' | 'list' | 'ranking'>('bracket');
+  const [view, setView] = useState<'swiss' | 'bracket' | 'list' | 'ranking'>('swiss');
   const [standings, setStandings] = useState<Standing[]>([]);
   const [currentRound, setCurrentRound] = useState(0);
   const [standingsLoading, setStandingsLoading] = useState(true);
@@ -105,12 +106,20 @@ const Matches = () => {
           {/* View toggle */}
           <div className="flex justify-center gap-2 mb-8 flex-wrap">
             <Button
+              variant={view === 'swiss' ? 'default' : 'outline'}
+              onClick={() => setView('swiss')}
+              className="gap-2"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Swiss Stage
+            </Button>
+            <Button
               variant={view === 'bracket' ? 'default' : 'outline'}
               onClick={() => setView('bracket')}
               className="gap-2"
             >
-              <LayoutGrid className="w-4 h-4" />
-              {t('matches.bracket')}
+              <GitBranch className="w-4 h-4" />
+              Playoff
             </Button>
             <Button
               variant={view === 'ranking' ? 'default' : 'outline'}
@@ -118,7 +127,7 @@ const Matches = () => {
               className="gap-2"
             >
               <Medal className="w-4 h-4" />
-              Tabela szwajcarska
+              Tabela
             </Button>
             <Button
               variant={view === 'list' ? 'default' : 'outline'}
@@ -136,7 +145,14 @@ const Matches = () => {
             </div>
           ) : (
             <>
-              {/* Bracket view */}
+              {/* Swiss Stage view */}
+              {view === 'swiss' && (
+                <div className="glass-card p-6 overflow-hidden">
+                  <SwissBracket />
+                </div>
+              )}
+
+              {/* Playoff Bracket view */}
               {view === 'bracket' && (
                 <div className="glass-card p-6 overflow-hidden">
                   <TournamentBracket />
