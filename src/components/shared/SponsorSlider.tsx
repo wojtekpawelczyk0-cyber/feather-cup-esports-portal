@@ -4,6 +4,7 @@ interface Sponsor {
   id: string;
   name: string;
   logo: string;
+  website_url?: string | null;
 }
 
 interface SponsorSliderProps {
@@ -14,6 +15,40 @@ export const SponsorSlider = ({ sponsors }: SponsorSliderProps) => {
   const { t } = useLanguage();
   // Duplicate sponsors for seamless infinite scroll
   const duplicatedSponsors = [...sponsors, ...sponsors];
+
+  const SponsorItem = ({ sponsor }: { sponsor: Sponsor }) => {
+    const content = (
+      <>
+        <div className="w-24 h-24 rounded-2xl bg-secondary/50 flex items-center justify-center p-4 hover:bg-secondary transition-colors duration-300">
+          <img
+            src={sponsor.logo}
+            alt={sponsor.name}
+            className="max-w-full max-h-full object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+          />
+        </div>
+        <span className="text-muted-foreground text-sm">{sponsor.name}</span>
+      </>
+    );
+
+    if (sponsor.website_url) {
+      return (
+        <a
+          href={sponsor.website_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 flex flex-col items-center gap-3 px-8 cursor-pointer"
+        >
+          {content}
+        </a>
+      );
+    }
+
+    return (
+      <div className="flex-shrink-0 flex flex-col items-center gap-3 px-8">
+        {content}
+      </div>
+    );
+  };
 
   return (
     <section className="py-16 overflow-hidden border-t border-border/50">
@@ -31,19 +66,7 @@ export const SponsorSlider = ({ sponsors }: SponsorSliderProps) => {
         {/* Slider */}
         <div className="sponsor-slider hover:[animation-play-state:paused]">
           {duplicatedSponsors.map((sponsor, index) => (
-            <div
-              key={`${sponsor.id}-${index}`}
-              className="flex-shrink-0 flex flex-col items-center gap-3 px-8"
-            >
-              <div className="w-24 h-24 rounded-2xl bg-secondary/50 flex items-center justify-center p-4 hover:bg-secondary transition-colors duration-300">
-                <img
-                  src={sponsor.logo}
-                  alt={sponsor.name}
-                  className="max-w-full max-h-full object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
-                />
-              </div>
-              <span className="text-muted-foreground text-sm">{sponsor.name}</span>
-            </div>
+            <SponsorItem key={`${sponsor.id}-${index}`} sponsor={sponsor} />
           ))}
         </div>
       </div>
