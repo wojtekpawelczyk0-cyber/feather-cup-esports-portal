@@ -18,6 +18,7 @@ import SteamCallback from "./pages/SteamCallback";
 import Account from "./pages/Account";
 import MyTeam from "./pages/MyTeam";
 import StaticPage from "./pages/StaticPage";
+import MapVeto from "./pages/MapVeto";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMatches from "./pages/admin/AdminMatches";
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/faq" element={<StaticPage />} />
               <Route path="/wsparcie" element={<StaticPage />} />
               {/* Admin Routes */}
+              <Route path="/turniej/wybieranie_map" element={<MapVeto />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="komentator" element={<CommentatorPanel />} />
