@@ -19,6 +19,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           current_step: number | null
+          format: string
           id: string
           is_active: boolean | null
           is_complete: boolean | null
@@ -32,6 +33,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           current_step?: number | null
+          format?: string
           id?: string
           is_active?: boolean | null
           is_complete?: boolean | null
@@ -45,6 +47,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           current_step?: number | null
+          format?: string
           id?: string
           is_active?: boolean | null
           is_complete?: boolean | null

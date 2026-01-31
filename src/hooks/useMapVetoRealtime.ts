@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' | 'picked_team2' | 'decider';
+export type VetoFormat = 'bo1' | 'bo3';
 
 export interface MapData {
   id: string;
@@ -28,7 +29,7 @@ type VetoStep = {
 };
 
 // BO3 veto order: Ban, Ban, Pick, Pick, Ban, Ban, Decider
-export const vetoOrder: VetoStep[] = [
+export const vetoOrderBO3: VetoStep[] = [
   { team: 1, action: 'ban' },
   { team: 2, action: 'ban' },
   { team: 1, action: 'pick' },
@@ -37,19 +38,36 @@ export const vetoOrder: VetoStep[] = [
   { team: 2, action: 'ban' },
 ];
 
+// BO1 veto order: 2x Ban T1, 2x Ban T2, Ban T1, Ban T2, Decider
+export const vetoOrderBO1: VetoStep[] = [
+  { team: 1, action: 'ban' },
+  { team: 1, action: 'ban' },
+  { team: 2, action: 'ban' },
+  { team: 2, action: 'ban' },
+  { team: 1, action: 'ban' },
+  { team: 2, action: 'ban' },
+];
+
+export const getVetoOrder = (format: VetoFormat): VetoStep[] => {
+  return format === 'bo1' ? vetoOrderBO1 : vetoOrderBO3;
+};
+
 interface UseMapVetoRealtimeProps {
   sessionCode: string | null;
   userTeam: 1 | 2 | null;
   hasAccess: boolean;
+  format?: VetoFormat;
 }
 
-export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapVetoRealtimeProps) => {
+export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: initialFormat = 'bo3' }: UseMapVetoRealtimeProps) => {
   const [maps, setMaps] = useState<MapData[]>(initialMaps);
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [format, setFormat] = useState<VetoFormat>(initialFormat);
   const { toast } = useToast();
 
+  const vetoOrder = getVetoOrder(format);
   const currentVeto = vetoOrder[currentStep];
   const isVetoComplete = currentStep >= vetoOrder.length;
   // Only team captains (userTeam 1 or 2) can act - admins/owners can only spectate
@@ -62,7 +80,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapV
     const loadSessionState = async () => {
       const { data: session, error } = await supabase
         .from('map_veto_sessions')
-        .select('id, current_step, maps_state, is_complete')
+        .select('id, current_step, maps_state, is_complete, format')
         .eq('session_code', sessionCode)
         .eq('is_active', true)
         .maybeSingle();
@@ -76,6 +94,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapV
         setSessionId(session.id);
         setCurrentStep(session.current_step || 0);
         setIsComplete(session.is_complete || false);
+        setFormat((session.format as VetoFormat) || 'bo3');
         
         if (session.maps_state && Array.isArray(session.maps_state) && session.maps_state.length > 0) {
           // Merge saved state with initial maps
@@ -112,6 +131,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapV
           
           setCurrentStep(newData.current_step || 0);
           setIsComplete(newData.is_complete || false);
+          if (newData.format) setFormat(newData.format as VetoFormat);
           
           if (newData.maps_state && Array.isArray(newData.maps_state) && newData.maps_state.length > 0) {
             const savedState = newData.maps_state as { id: string; status: MapStatus }[];
@@ -197,10 +217,11 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapV
   }, [maps, currentStep, isVetoComplete, isComplete, canAct, currentVeto, sessionCode, sessionId, toast]);
 
   // Reset veto (demo mode only)
-  const resetVeto = useCallback(() => {
+  const resetVeto = useCallback((newFormat?: VetoFormat) => {
     setMaps(initialMaps);
     setCurrentStep(0);
     setIsComplete(false);
+    if (newFormat) setFormat(newFormat);
   }, []);
 
   return {
@@ -210,7 +231,10 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapV
     currentVeto,
     isVetoComplete,
     canAct,
+    format,
+    vetoOrder,
     handleMapClick,
-    resetVeto
+    resetVeto,
+    setFormat
   };
 };

@@ -26,6 +26,7 @@ interface VetoSession {
   is_active: boolean;
   created_at: string;
   session_code: string;
+  format: 'bo1' | 'bo3';
   team1_data?: TeamData;
   team2_data?: TeamData;
 }
@@ -50,6 +51,7 @@ const AdminMapVeto = () => {
   
   const [selectedTeam1, setSelectedTeam1] = useState('');
   const [selectedTeam2, setSelectedTeam2] = useState('');
+  const [selectedFormat, setSelectedFormat] = useState<'bo1' | 'bo3'>('bo3');
 
   const isOwner = userRoles.includes('owner');
 
@@ -125,6 +127,7 @@ const AdminMapVeto = () => {
 
           return {
             ...session,
+            format: (session.format as 'bo1' | 'bo3') || 'bo3',
             team1_data: team1Result.data ? {
               id: team1Result.data.id,
               name: team1Result.data.name,
@@ -149,7 +152,7 @@ const AdminMapVeto = () => {
         })
       );
 
-      setSessions(sessionsWithTeams);
+      setSessions(sessionsWithTeams as VetoSession[]);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -192,7 +195,8 @@ const AdminMapVeto = () => {
         .insert({
           team1_user_id: team1.owner_id,
           team2_user_id: team2.owner_id,
-          created_by: user.id
+          created_by: user.id,
+          format: selectedFormat
         });
 
       if (error) throw error;
@@ -204,6 +208,7 @@ const AdminMapVeto = () => {
 
       setSelectedTeam1('');
       setSelectedTeam2('');
+      setSelectedFormat('bo3');
       fetchSessions();
     } catch (error: any) {
       toast({
@@ -422,6 +427,34 @@ const AdminMapVeto = () => {
             </div>
           </div>
 
+          {/* Format Selection */}
+          <div className="mb-6">
+            <Label className="mb-3 block">Format meczu</Label>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant={selectedFormat === 'bo3' ? 'default' : 'outline'}
+                onClick={() => setSelectedFormat('bo3')}
+                className="flex-1"
+              >
+                BO3 (Playoff)
+              </Button>
+              <Button
+                type="button"
+                variant={selectedFormat === 'bo1' ? 'default' : 'outline'}
+                onClick={() => setSelectedFormat('bo1')}
+                className="flex-1"
+              >
+                BO1 (Swiss)
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {selectedFormat === 'bo3' 
+                ? 'BO3: Ban → Ban → Pick → Pick → Ban → Ban → Decider' 
+                : 'BO1: 2x Ban T1 → 2x Ban T2 → Ban T1 → Ban T2 → Decider'}
+            </p>
+          </div>
+
           {/* Create Button */}
           <Button 
             onClick={createSession} 
@@ -434,7 +467,7 @@ const AdminMapVeto = () => {
             ) : (
               <Plus className="w-4 h-4 mr-2" />
             )}
-            Utwórz sesję veto
+            Utwórz sesję veto ({selectedFormat.toUpperCase()})
           </Button>
         </CardContent>
       </Card>
@@ -502,6 +535,10 @@ const AdminMapVeto = () => {
 
                     <Badge variant={session.is_active ? 'default' : 'secondary'}>
                       {session.is_active ? 'Aktywna' : 'Nieaktywna'}
+                    </Badge>
+
+                    <Badge variant="outline">
+                      {session.format === 'bo1' ? 'BO1' : 'BO3'}
                     </Badge>
 
                     <span className="text-xs text-muted-foreground">
