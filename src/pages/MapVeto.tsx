@@ -5,61 +5,37 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { RotateCcw, Swords, Lock, Loader2 } from 'lucide-react';
+import { RotateCcw, Swords, Lock, Loader2, Wifi } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useMapVetoRealtime, vetoOrder, MapData } from '@/hooks/useMapVetoRealtime';
 
 type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' | 'picked_team2' | 'decider';
-
-interface MapData {
-  id: string;
-  name: string;
-  image: string;
-  status: MapStatus;
-}
-
-// CS2 map images - using reliable CDN sources
-const initialMaps: MapData[] = [
-  { id: 'mirage', name: 'Mirage', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_mirage.png', status: 'available' },
-  { id: 'dust2', name: 'Dust II', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_dust2.png', status: 'available' },
-  { id: 'anubis', name: 'Anubis', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_anubis.png', status: 'available' },
-  { id: 'inferno', name: 'Inferno', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_inferno.png', status: 'available' },
-  { id: 'vertigo', name: 'Vertigo', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_vertigo.png', status: 'available' },
-  { id: 'nuke', name: 'Nuke', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_nuke.png', status: 'available' },
-  { id: 'ancient', name: 'Ancient', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_ancient.png', status: 'available' },
-];
-
-type VetoStep = {
-  team: 1 | 2;
-  action: 'ban' | 'pick';
-};
-
-// BO3 veto order: Ban, Ban, Pick, Pick, Ban, Ban, Decider
-const vetoOrder: VetoStep[] = [
-  { team: 1, action: 'ban' },
-  { team: 2, action: 'ban' },
-  { team: 1, action: 'pick' },
-  { team: 2, action: 'pick' },
-  { team: 1, action: 'ban' },
-  { team: 2, action: 'ban' },
-];
 
 const MapVeto = () => {
   const [searchParams] = useSearchParams();
   const sessionCode = searchParams.get('code');
   const { user } = useAuth();
   
-  const [maps, setMaps] = useState<MapData[]>(initialMaps);
-  const [currentStep, setCurrentStep] = useState(0);
   const [team1Name, setTeam1Name] = useState('Drużyna 1');
   const [team2Name, setTeam2Name] = useState('Drużyna 2');
-  const [isComplete, setIsComplete] = useState(false);
   
   // Session auth state
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [sessionData, setSessionData] = useState<any>(null);
   const [userTeam, setUserTeam] = useState<1 | 2 | null>(null);
+
+  // Realtime hook
+  const {
+    maps,
+    currentStep,
+    isComplete,
+    currentVeto,
+    isVetoComplete,
+    canAct,
+    handleMapClick,
+    resetVeto
+  } = useMapVetoRealtime({ sessionCode, userTeam, hasAccess });
 
   useEffect(() => {
     if (sessionCode) {
@@ -89,8 +65,6 @@ const MapVeto = () => {
         setLoading(false);
         return;
       }
-
-      setSessionData(session);
 
       // Check if user has access
       if (user) {
@@ -128,55 +102,6 @@ const MapVeto = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const currentVeto = vetoOrder[currentStep];
-  const isVetoComplete = currentStep >= vetoOrder.length;
-  
-  // Check if current user can make the current action
-  const canAct = !sessionCode || (userTeam === currentVeto?.team) || (!userTeam && hasAccess);
-
-  const handleMapClick = (mapId: string) => {
-    if (isVetoComplete || isComplete) return;
-    if (!canAct) return;
-
-    const map = maps.find(m => m.id === mapId);
-    if (!map || map.status !== 'available') return;
-
-    const { team, action } = currentVeto;
-    let newStatus: MapStatus;
-
-    if (action === 'ban') {
-      newStatus = team === 1 ? 'banned_team1' : 'banned_team2';
-    } else {
-      newStatus = team === 1 ? 'picked_team1' : 'picked_team2';
-    }
-
-    const newMaps = maps.map(m => 
-      m.id === mapId ? { ...m, status: newStatus } : m
-    );
-
-    if (currentStep === vetoOrder.length - 1) {
-      const remainingMap = newMaps.find(m => m.status === 'available');
-      if (remainingMap) {
-        const finalMaps = newMaps.map(m => 
-          m.id === remainingMap.id ? { ...m, status: 'decider' as MapStatus } : m
-        );
-        setMaps(finalMaps);
-      } else {
-        setMaps(newMaps);
-      }
-      setIsComplete(true);
-    } else {
-      setMaps(newMaps);
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const resetVeto = () => {
-    setMaps(initialMaps);
-    setCurrentStep(0);
-    setIsComplete(false);
   };
 
   const getStatusBadge = (status: MapStatus) => {
@@ -257,11 +182,19 @@ const MapVeto = () => {
             <h1 className="text-4xl font-bold">Map Veto</h1>
           </div>
           <p className="text-muted-foreground">System wyboru map - Best of 3</p>
-          {userTeam && (
-            <Badge className="mt-2" variant="outline">
-              Jesteś: {userTeam === 1 ? team1Name : team2Name}
-            </Badge>
-          )}
+          <div className="flex items-center justify-center gap-2 mt-2">
+            {userTeam && (
+              <Badge variant="outline">
+                Jesteś: {userTeam === 1 ? team1Name : team2Name}
+              </Badge>
+            )}
+            {sessionCode && (
+              <Badge variant="outline" className="gap-1">
+                <Wifi className="w-3 h-3 text-emerald-500" />
+                Na żywo
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Team Names Display (not editable in session mode) */}
