@@ -88,14 +88,14 @@ const MapVeto = () => {
         }
       }
 
-      // Fetch team names from profiles
-      const [profile1, profile2] = await Promise.all([
-        supabase.from('profiles').select('display_name').eq('user_id', session.team1_user_id).maybeSingle(),
-        supabase.from('profiles').select('display_name').eq('user_id', session.team2_user_id).maybeSingle()
+      // Fetch team names from teams table (by owner_id)
+      const [team1, team2] = await Promise.all([
+        supabase.from('teams').select('name').eq('owner_id', session.team1_user_id).maybeSingle(),
+        supabase.from('teams').select('name').eq('owner_id', session.team2_user_id).maybeSingle()
       ]);
 
-      if (profile1.data?.display_name) setTeam1Name(profile1.data.display_name);
-      if (profile2.data?.display_name) setTeam2Name(profile2.data.display_name);
+      if (team1.data?.name) setTeam1Name(team1.data.name);
+      if (team2.data?.name) setTeam2Name(team2.data.name);
 
     } catch (error) {
       console.error('Error verifying session:', error);
