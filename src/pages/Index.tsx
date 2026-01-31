@@ -213,6 +213,7 @@ const Index = () => {
           id: s.id,
           name: s.name,
           logo: s.logo_url || 'https://placehold.co/100x100/1a1a2e/00d4ff?text=' + s.name.charAt(0),
+          website_url: s.website_url,
         }))} />
       )}
     </Layout>
