@@ -8,7 +8,9 @@ import { cn } from '@/lib/utils';
 import { RotateCcw, Swords, Lock, Loader2, Wifi } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useMapVetoRealtime, MapData, VetoFormat } from '@/hooks/useMapVetoRealtime';
+import { useMapVetoRealtime, MapData, VetoFormat, VETO_TIME_LIMIT } from '@/hooks/useMapVetoRealtime';
+import { VetoTimer } from '@/components/mapveto/VetoTimer';
+import { RandomMapAnimation } from '@/components/mapveto/RandomMapAnimation';
 
 type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' | 'picked_team2' | 'decider';
 
@@ -36,7 +38,10 @@ const MapVeto = () => {
     canAct,
     format,
     vetoOrder,
+    timeLeft,
+    isRandomizing,
     handleMapClick,
+    handleRandomMapSelect,
     resetVeto
   } = useMapVetoRealtime({ sessionCode, userTeam, hasAccess, format: demoFormat });
 
@@ -177,6 +182,13 @@ const MapVeto = () => {
 
   return (
     <Layout>
+      {/* Random map animation overlay */}
+      <RandomMapAnimation
+        maps={maps}
+        onComplete={handleRandomMapSelect}
+        isActive={isRandomizing}
+      />
+      
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
@@ -241,8 +253,18 @@ const MapVeto = () => {
           </div>
         </div>
 
-        {/* Current Action */}
-        <div className="text-center mb-8">
+        {/* Timer and Current Action */}
+        <div className="flex flex-col items-center gap-6 mb-8">
+          {/* Timer */}
+          {!isComplete && !isVetoComplete && (
+            <VetoTimer 
+              timeLeft={timeLeft} 
+              maxTime={VETO_TIME_LIMIT} 
+              isActive={!isComplete}
+            />
+          )}
+          
+          {/* Current Action */}
           <div className={cn(
             "inline-flex items-center gap-3 px-6 py-3 rounded-xl text-lg font-semibold",
             isComplete 

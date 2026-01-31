@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+export const VETO_TIME_LIMIT = 90; // seconds
 
 type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' | 'picked_team2' | 'decider';
 export type VetoFormat = 'bo1' | 'bo3';
@@ -65,6 +67,9 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [format, setFormat] = useState<VetoFormat>(initialFormat);
+  const [timeLeft, setTimeLeft] = useState(VETO_TIME_LIMIT);
+  const [isRandomizing, setIsRandomizing] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const vetoOrder = getVetoOrder(format);
@@ -72,6 +77,49 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
   const isVetoComplete = currentStep >= vetoOrder.length;
   // Only team captains (userTeam 1 or 2) can act - admins/owners can only spectate
   const canAct = !sessionCode ? true : (userTeam === currentVeto?.team);
+
+  // Timer logic
+  useEffect(() => {
+    // Reset timer when step changes
+    setTimeLeft(VETO_TIME_LIMIT);
+    
+    if (isComplete || isVetoComplete || isRandomizing) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          // Time's up - trigger random selection
+          setIsRandomizing(true);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [currentStep, isComplete, isVetoComplete, isRandomizing]);
+
+  // Handle random map selection after timeout
+  const handleRandomMapSelect = useCallback((mapId: string) => {
+    setIsRandomizing(false);
+    // Directly call the map click logic
+    handleMapClickInternal(mapId, true);
+  }, []);
 
   // Load initial state from database
   useEffect(() => {
@@ -152,10 +200,10 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     };
   }, [sessionCode, sessionId]);
 
-  // Handle map click
-  const handleMapClick = useCallback(async (mapId: string) => {
+  // Internal map click handler (used by both manual click and random selection)
+  const handleMapClickInternal = useCallback(async (mapId: string, isAutoSelect: boolean = false) => {
     if (isVetoComplete || isComplete) return;
-    if (!canAct) return;
+    if (!isAutoSelect && !canAct) return;
 
     const map = maps.find(m => m.id === mapId);
     if (!map || map.status !== 'available') return;
@@ -191,6 +239,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     setMaps(newMaps);
     setCurrentStep(newStep);
     setIsComplete(completed);
+    setTimeLeft(VETO_TIME_LIMIT); // Reset timer for next step
 
     // If in session mode, sync to database
     if (sessionCode && sessionId) {
@@ -214,13 +263,20 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
         });
       }
     }
-  }, [maps, currentStep, isVetoComplete, isComplete, canAct, currentVeto, sessionCode, sessionId, toast]);
+  }, [maps, currentStep, isVetoComplete, isComplete, canAct, currentVeto, sessionCode, sessionId, vetoOrder.length, toast]);
+
+  // Handle map click (wrapper for external use)
+  const handleMapClick = useCallback(async (mapId: string) => {
+    handleMapClickInternal(mapId, false);
+  }, [handleMapClickInternal]);
 
   // Reset veto (demo mode only)
   const resetVeto = useCallback((newFormat?: VetoFormat) => {
     setMaps(initialMaps);
     setCurrentStep(0);
     setIsComplete(false);
+    setTimeLeft(VETO_TIME_LIMIT);
+    setIsRandomizing(false);
     if (newFormat) setFormat(newFormat);
   }, []);
 
@@ -233,7 +289,10 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     canAct,
     format,
     vetoOrder,
+    timeLeft,
+    isRandomizing,
     handleMapClick,
+    handleRandomMapSelect,
     resetVeto,
     setFormat
   };
