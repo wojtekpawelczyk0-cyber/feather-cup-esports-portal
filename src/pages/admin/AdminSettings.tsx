@@ -276,19 +276,18 @@ const AdminSettings = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label htmlFor="favicon_url" className="flex items-center gap-2">
                 <FileImage className="w-4 h-4 text-muted-foreground" />
-                Favicon (ikona w karcie)
+                Favicon URL (ikona w karcie)
               </Label>
-              <FileUpload
+              <Input
+                id="favicon_url"
                 value={settings.favicon_url}
-                onChange={(url) => setSettings({ ...settings, favicon_url: url })}
-                label="favicon"
-                accept=".ico,.png,.svg,image/png,image/x-icon,image/svg+xml"
-                folder="branding"
+                onChange={(e) => setSettings({ ...settings, favicon_url: e.target.value })}
+                placeholder="https://example.com/favicon.ico"
               />
               <p className="text-xs text-muted-foreground">
-                Mała ikonka wyświetlana w karcie przeglądarki. Zalecany format: .ico, .png (32x32 lub 64x64).
+                Podaj bezpośredni URL do pliku .ico lub .png. Ikona wyświetlana w karcie przeglądarki.
               </p>
             </div>
             <div className="space-y-2">
