@@ -476,7 +476,7 @@ const AdminMapVeto = () => {
                       <div>
                         <div className="font-semibold">{session.team1_data?.name || 'Nieznana drużyna'}</div>
                         <div className="text-xs text-muted-foreground">
-                          {session.team1_data?.owner_name || 'Brak kapitana'}
+                          Kapitan: {session.team1_data?.owner_name || 'Nieznany'}
                         </div>
                       </div>
                     </div>
@@ -495,7 +495,7 @@ const AdminMapVeto = () => {
                       <div>
                         <div className="font-semibold">{session.team2_data?.name || 'Nieznana drużyna'}</div>
                         <div className="text-xs text-muted-foreground">
-                          {session.team2_data?.owner_name || 'Brak kapitana'}
+                          Kapitan: {session.team2_data?.owner_name || 'Nieznany'}
                         </div>
                       </div>
                     </div>
