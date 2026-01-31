@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { RotateCcw, Swords, Lock, Loader2, Wifi } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useMapVetoRealtime, vetoOrder, MapData } from '@/hooks/useMapVetoRealtime';
+import { useMapVetoRealtime, MapData, VetoFormat } from '@/hooks/useMapVetoRealtime';
 
 type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' | 'picked_team2' | 'decider';
 
@@ -19,6 +19,7 @@ const MapVeto = () => {
   
   const [team1Name, setTeam1Name] = useState('Drużyna 1');
   const [team2Name, setTeam2Name] = useState('Drużyna 2');
+  const [demoFormat, setDemoFormat] = useState<VetoFormat>('bo3');
   
   // Session auth state
   const [loading, setLoading] = useState(true);
@@ -33,9 +34,11 @@ const MapVeto = () => {
     currentVeto,
     isVetoComplete,
     canAct,
+    format,
+    vetoOrder,
     handleMapClick,
     resetVeto
-  } = useMapVetoRealtime({ sessionCode, userTeam, hasAccess });
+  } = useMapVetoRealtime({ sessionCode, userTeam, hasAccess, format: demoFormat });
 
   useEffect(() => {
     if (sessionCode) {
@@ -181,7 +184,9 @@ const MapVeto = () => {
             <Swords className="w-8 h-8 text-primary" />
             <h1 className="text-4xl font-bold">Map Veto</h1>
           </div>
-          <p className="text-muted-foreground">System wyboru map - Best of 3</p>
+          <p className="text-muted-foreground">
+            System wyboru map - {format === 'bo1' ? 'Best of 1' : 'Best of 3'}
+          </p>
           <div className="flex items-center justify-center gap-2 mt-2">
             {userTeam && (
               <Badge variant="outline">
@@ -357,42 +362,72 @@ const MapVeto = () => {
         {/* Final Result */}
         {isComplete && (
           <div className="bg-card/50 border border-border rounded-2xl p-8 mb-8">
-            <h2 className="text-2xl font-bold text-center mb-6">Kolejność map</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Map 1 */}
+            <h2 className="text-2xl font-bold text-center mb-6">
+              {format === 'bo1' ? 'Wybrana mapa' : 'Kolejność map'}
+            </h2>
+            {format === 'bo1' ? (
               <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">Mapa 1 (wybór {team1Name})</div>
-                <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
-                  <span className="text-2xl font-bold text-blue-400">{team1Pick?.name || '-'}</span>
+                <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-6 max-w-md mx-auto">
+                  <span className="text-3xl font-bold text-amber-400">{decider?.name || '-'}</span>
                 </div>
               </div>
-              
-              {/* Map 2 */}
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">Mapa 2 (wybór {team2Name})</div>
-                <div className="bg-orange-500/20 border border-orange-500/30 rounded-xl p-4">
-                  <span className="text-2xl font-bold text-orange-400">{team2Pick?.name || '-'}</span>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Map 1 */}
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground mb-2">Mapa 1 (wybór {team1Name})</div>
+                  <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
+                    <span className="text-2xl font-bold text-blue-400">{team1Pick?.name || '-'}</span>
+                  </div>
+                </div>
+                
+                {/* Map 2 */}
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground mb-2">Mapa 2 (wybór {team2Name})</div>
+                  <div className="bg-orange-500/20 border border-orange-500/30 rounded-xl p-4">
+                    <span className="text-2xl font-bold text-orange-400">{team2Pick?.name || '-'}</span>
+                  </div>
+                </div>
+                
+                {/* Map 3 */}
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground mb-2">Mapa 3 (Decider)</div>
+                  <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-4">
+                    <span className="text-2xl font-bold text-amber-400">{decider?.name || '-'}</span>
+                  </div>
                 </div>
               </div>
-              
-              {/* Map 3 */}
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">Mapa 3 (Decider)</div>
-                <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-4">
-                  <span className="text-2xl font-bold text-amber-400">{decider?.name || '-'}</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Reset Button (only in demo mode) */}
+        {/* Format selector and Reset Button (only in demo mode) */}
         {!sessionCode && (
-          <div className="text-center">
+          <div className="text-center space-y-4">
+            <div className="flex justify-center gap-2">
+              <Button
+                variant={demoFormat === 'bo3' ? 'default' : 'outline'}
+                onClick={() => {
+                  setDemoFormat('bo3');
+                  resetVeto('bo3');
+                }}
+              >
+                BO3
+              </Button>
+              <Button
+                variant={demoFormat === 'bo1' ? 'default' : 'outline'}
+                onClick={() => {
+                  setDemoFormat('bo1');
+                  resetVeto('bo1');
+                }}
+              >
+                BO1
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="lg"
-              onClick={resetVeto}
+              onClick={() => resetVeto(demoFormat)}
               className="gap-2"
             >
               <RotateCcw className="w-4 h-4" />
