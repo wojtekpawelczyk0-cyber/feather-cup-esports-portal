@@ -52,7 +52,8 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess }: UseMapV
 
   const currentVeto = vetoOrder[currentStep];
   const isVetoComplete = currentStep >= vetoOrder.length;
-  const canAct = !sessionCode || (userTeam === currentVeto?.team) || (!userTeam && hasAccess);
+  // Only team captains (userTeam 1 or 2) can act - admins/owners can only spectate
+  const canAct = !sessionCode ? true : (userTeam === currentVeto?.team);
 
   // Load initial state from database
   useEffect(() => {
