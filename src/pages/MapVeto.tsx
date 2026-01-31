@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { RotateCcw, Swords } from 'lucide-react';
+import { RotateCcw, Swords, Lock, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' | 'picked_team2' | 'decider';
 
@@ -15,14 +18,15 @@ interface MapData {
   status: MapStatus;
 }
 
+// CS2 map images - using reliable CDN sources
 const initialMaps: MapData[] = [
-  { id: 'mirage', name: 'Mirage', image: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400&h=225&fit=crop', status: 'available' },
-  { id: 'dust2', name: 'Dust II', image: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400&h=225&fit=crop', status: 'available' },
-  { id: 'anubis', name: 'Anubis', image: 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=400&h=225&fit=crop', status: 'available' },
-  { id: 'inferno', name: 'Inferno', image: 'https://images.unsplash.com/photo-1518173946687-a4c036bc6c94?w=400&h=225&fit=crop', status: 'available' },
-  { id: 'vertigo', name: 'Vertigo', image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=225&fit=crop', status: 'available' },
-  { id: 'nuke', name: 'Nuke', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&h=225&fit=crop', status: 'available' },
-  { id: 'ancient', name: 'Ancient', image: 'https://images.unsplash.com/photo-1569982175971-d92b01cf8694?w=400&h=225&fit=crop', status: 'available' },
+  { id: 'mirage', name: 'Mirage', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_mirage.png', status: 'available' },
+  { id: 'dust2', name: 'Dust II', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_dust2.png', status: 'available' },
+  { id: 'anubis', name: 'Anubis', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_anubis.png', status: 'available' },
+  { id: 'inferno', name: 'Inferno', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_inferno.png', status: 'available' },
+  { id: 'vertigo', name: 'Vertigo', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_vertigo.png', status: 'available' },
+  { id: 'nuke', name: 'Nuke', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_nuke.png', status: 'available' },
+  { id: 'ancient', name: 'Ancient', image: 'https://cdn.cloudflare.steamstatic.com/apps/csgo/images/csgo_react/maps/de_ancient.png', status: 'available' },
 ];
 
 type VetoStep = {
@@ -41,17 +45,100 @@ const vetoOrder: VetoStep[] = [
 ];
 
 const MapVeto = () => {
+  const [searchParams] = useSearchParams();
+  const sessionCode = searchParams.get('code');
+  const { user } = useAuth();
+  
   const [maps, setMaps] = useState<MapData[]>(initialMaps);
   const [currentStep, setCurrentStep] = useState(0);
   const [team1Name, setTeam1Name] = useState('Drużyna 1');
   const [team2Name, setTeam2Name] = useState('Drużyna 2');
   const [isComplete, setIsComplete] = useState(false);
+  
+  // Session auth state
+  const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [sessionData, setSessionData] = useState<any>(null);
+  const [userTeam, setUserTeam] = useState<1 | 2 | null>(null);
+
+  useEffect(() => {
+    if (sessionCode) {
+      verifySession();
+    } else {
+      // No code = public demo mode
+      setLoading(false);
+      setHasAccess(true);
+    }
+  }, [sessionCode, user]);
+
+  const verifySession = async () => {
+    if (!sessionCode) return;
+    
+    try {
+      const { data: session, error } = await supabase
+        .from('map_veto_sessions')
+        .select('*')
+        .eq('session_code', sessionCode)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!session) {
+        setHasAccess(false);
+        setLoading(false);
+        return;
+      }
+
+      setSessionData(session);
+
+      // Check if user has access
+      if (user) {
+        if (user.id === session.team1_user_id) {
+          setUserTeam(1);
+          setHasAccess(true);
+        } else if (user.id === session.team2_user_id) {
+          setUserTeam(2);
+          setHasAccess(true);
+        } else {
+          // Check if user is owner
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('role', 'owner');
+          
+          if (roles && roles.length > 0) {
+            setHasAccess(true);
+          }
+        }
+      }
+
+      // Fetch team names from profiles
+      const [profile1, profile2] = await Promise.all([
+        supabase.from('profiles').select('display_name').eq('user_id', session.team1_user_id).maybeSingle(),
+        supabase.from('profiles').select('display_name').eq('user_id', session.team2_user_id).maybeSingle()
+      ]);
+
+      if (profile1.data?.display_name) setTeam1Name(profile1.data.display_name);
+      if (profile2.data?.display_name) setTeam2Name(profile2.data.display_name);
+
+    } catch (error) {
+      console.error('Error verifying session:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const currentVeto = vetoOrder[currentStep];
   const isVetoComplete = currentStep >= vetoOrder.length;
+  
+  // Check if current user can make the current action
+  const canAct = !sessionCode || (userTeam === currentVeto?.team) || (!userTeam && hasAccess);
 
   const handleMapClick = (mapId: string) => {
     if (isVetoComplete || isComplete) return;
+    if (!canAct) return;
 
     const map = maps.find(m => m.id === mapId);
     if (!map || map.status !== 'available') return;
@@ -69,9 +156,7 @@ const MapVeto = () => {
       m.id === mapId ? { ...m, status: newStatus } : m
     );
 
-    // Check if this was the last step
     if (currentStep === vetoOrder.length - 1) {
-      // Mark the remaining map as decider
       const remainingMap = newMaps.find(m => m.status === 'available');
       if (remainingMap) {
         const finalMaps = newMaps.map(m => 
@@ -127,6 +212,41 @@ const MapVeto = () => {
 
   const { team1Pick, team2Pick, decider } = getPickedMaps();
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-24 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (sessionCode && !hasAccess) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-24">
+          <div className="max-w-md mx-auto text-center">
+            <div className="bg-card border border-border rounded-2xl p-8">
+              <Lock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h1 className="text-2xl font-bold mb-2">Brak dostępu</h1>
+              <p className="text-muted-foreground">
+                {!user 
+                  ? 'Musisz być zalogowany jako kapitan jednej z drużyn, aby uzyskać dostęp do tej sesji veto.'
+                  : 'Nie masz uprawnień do tej sesji veto. Tylko kapitanowie drużyn mają dostęp.'}
+              </p>
+              {!user && (
+                <Button className="mt-4" asChild>
+                  <a href="/auth">Zaloguj się</a>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12">
@@ -137,30 +257,49 @@ const MapVeto = () => {
             <h1 className="text-4xl font-bold">Map Veto</h1>
           </div>
           <p className="text-muted-foreground">System wyboru map - Best of 3</p>
+          {userTeam && (
+            <Badge className="mt-2" variant="outline">
+              Jesteś: {userTeam === 1 ? team1Name : team2Name}
+            </Badge>
+          )}
         </div>
 
-        {/* Team Names Input */}
+        {/* Team Names Display (not editable in session mode) */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-blue-500"></div>
-            <input
-              type="text"
-              value={team1Name}
-              onChange={(e) => setTeam1Name(e.target.value)}
-              className="bg-secondary/50 border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Nazwa drużyny 1"
-            />
+            <div className={cn(
+              "w-4 h-4 rounded",
+              userTeam === 1 ? "bg-blue-500 ring-2 ring-blue-300" : "bg-blue-500"
+            )}></div>
+            {sessionCode ? (
+              <span className="text-lg font-semibold">{team1Name}</span>
+            ) : (
+              <input
+                type="text"
+                value={team1Name}
+                onChange={(e) => setTeam1Name(e.target.value)}
+                className="bg-secondary/50 border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Nazwa drużyny 1"
+              />
+            )}
           </div>
           <span className="text-2xl font-bold text-muted-foreground self-center">VS</span>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-orange-500"></div>
-            <input
-              type="text"
-              value={team2Name}
-              onChange={(e) => setTeam2Name(e.target.value)}
-              className="bg-secondary/50 border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Nazwa drużyny 2"
-            />
+            <div className={cn(
+              "w-4 h-4 rounded",
+              userTeam === 2 ? "bg-orange-500 ring-2 ring-orange-300" : "bg-orange-500"
+            )}></div>
+            {sessionCode ? (
+              <span className="text-lg font-semibold">{team2Name}</span>
+            ) : (
+              <input
+                type="text"
+                value={team2Name}
+                onChange={(e) => setTeam2Name(e.target.value)}
+                className="bg-secondary/50 border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Nazwa drużyny 2"
+              />
+            )}
           </div>
         </div>
 
@@ -181,6 +320,9 @@ const MapVeto = () => {
               )} />
             )}
             {getCurrentActionText()}
+            {!canAct && !isComplete && (
+              <span className="text-xs opacity-70">(Czekaj na przeciwnika)</span>
+            )}
           </div>
         </div>
 
@@ -219,10 +361,12 @@ const MapVeto = () => {
               key={map.id}
               onClick={() => handleMapClick(map.id)}
               className={cn(
-                "relative overflow-hidden cursor-pointer transition-all duration-300 group",
-                map.status === 'available' && !isComplete
-                  ? "hover:scale-105 hover:ring-2 hover:ring-primary"
-                  : "opacity-75",
+                "relative overflow-hidden transition-all duration-300 group",
+                map.status === 'available' && !isComplete && canAct
+                  ? "cursor-pointer hover:scale-105 hover:ring-2 hover:ring-primary"
+                  : map.status === 'available' && !canAct
+                    ? "cursor-not-allowed opacity-50"
+                    : "opacity-75",
                 map.status === 'banned_team1' || map.status === 'banned_team2'
                   ? "grayscale"
                   : "",
@@ -240,6 +384,10 @@ const MapVeto = () => {
                   src={map.image}
                   alt={map.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback gradient if image fails
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 
@@ -305,18 +453,20 @@ const MapVeto = () => {
           </div>
         )}
 
-        {/* Reset Button */}
-        <div className="text-center">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={resetVeto}
-            className="gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Reset Veto
-          </Button>
-        </div>
+        {/* Reset Button (only in demo mode) */}
+        {!sessionCode && (
+          <div className="text-center">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={resetVeto}
+              className="gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Veto
+            </Button>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="mt-12 flex flex-wrap justify-center gap-4 text-sm">

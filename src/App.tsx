@@ -29,6 +29,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminBracket from "./pages/admin/AdminBracket";
 import AdminPages from "./pages/admin/AdminPages";
 import AdminSwiss from "./pages/admin/AdminSwiss";
+import AdminMapVeto from "./pages/admin/AdminMapVeto";
 import CommentatorPanel from "./pages/admin/CommentatorPanel";
 import NotFound from "./pages/NotFound";
 
@@ -84,6 +85,7 @@ const App = () => (
                 <Route path="uzytkownicy" element={<AdminUsers />} />
                 <Route path="ustawienia" element={<AdminSettings />} />
                 <Route path="strony" element={<AdminPages />} />
+                <Route path="map-veto" element={<AdminMapVeto />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

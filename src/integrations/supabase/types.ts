@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      map_veto_sessions: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          is_active: boolean | null
+          match_id: string | null
+          session_code: string | null
+          team1_user_id: string
+          team2_user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          match_id?: string | null
+          session_code?: string | null
+          team1_user_id: string
+          team2_user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          match_id?: string | null
+          session_code?: string | null
+          team1_user_id?: string
+          team2_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_veto_sessions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           bracket_position: number | null
