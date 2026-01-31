@@ -4,13 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Copy, ExternalLink, Users, Swords, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Copy, ExternalLink, Users, Swords, Loader2, Trophy, UserCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 type AppRole = 'owner' | 'admin' | 'commentator' | 'support';
 
@@ -26,21 +26,25 @@ interface VetoSession {
   is_active: boolean;
   created_at: string;
   session_code: string;
-  team1_profile?: { display_name: string | null; avatar_url: string | null };
-  team2_profile?: { display_name: string | null; avatar_url: string | null };
+  team1_data?: TeamData;
+  team2_data?: TeamData;
 }
 
-interface TeamOwner {
-  user_id: string;
-  team_name: string;
-  display_name: string | null;
-  avatar_url: string | null;
+interface TeamData {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  owner_id: string;
+  owner_name: string | null;
+  owner_avatar: string | null;
+  status: string;
+  member_count: number;
 }
 
 const AdminMapVeto = () => {
   const { userRoles } = useOutletContext<OutletContext>();
   const [sessions, setSessions] = useState<VetoSession[]>([]);
-  const [teamOwners, setTeamOwners] = useState<TeamOwner[]>([]);
+  const [teams, setTeams] = useState<TeamData[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   
@@ -52,9 +56,47 @@ const AdminMapVeto = () => {
   useEffect(() => {
     if (isOwner) {
       fetchSessions();
-      fetchTeamOwners();
+      fetchTeams();
     }
   }, [isOwner]);
+
+  const fetchTeams = async () => {
+    try {
+      // Fetch all teams with their owners
+      const { data: teamsData, error } = await supabase
+        .from('teams')
+        .select('id, name, logo_url, owner_id, status')
+        .not('owner_id', 'is', null)
+        .order('name');
+
+      if (error) throw error;
+
+      // Fetch member counts and owner profiles
+      const teamsWithDetails = await Promise.all(
+        (teamsData || []).map(async (team) => {
+          const [membersResult, profileResult] = await Promise.all([
+            supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', team.id),
+            supabase.from('profiles').select('display_name, avatar_url').eq('user_id', team.owner_id!).maybeSingle()
+          ]);
+
+          return {
+            id: team.id,
+            name: team.name,
+            logo_url: team.logo_url,
+            owner_id: team.owner_id!,
+            owner_name: profileResult.data?.display_name || null,
+            owner_avatar: profileResult.data?.avatar_url || null,
+            status: team.status,
+            member_count: membersResult.count || 0
+          };
+        })
+      );
+
+      setTeams(teamsWithDetails);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    }
+  };
 
   const fetchSessions = async () => {
     try {
@@ -65,23 +107,49 @@ const AdminMapVeto = () => {
 
       if (error) throw error;
 
-      // Fetch profiles for team users
-      const sessionsWithProfiles = await Promise.all(
+      // Fetch team data for sessions
+      const sessionsWithTeams = await Promise.all(
         (data || []).map(async (session) => {
-          const [profile1, profile2] = await Promise.all([
-            supabase.from('profiles').select('display_name, avatar_url').eq('user_id', session.team1_user_id).maybeSingle(),
-            supabase.from('profiles').select('display_name, avatar_url').eq('user_id', session.team2_user_id).maybeSingle()
+          // Find teams by owner_id
+          const [team1Result, team2Result] = await Promise.all([
+            supabase.from('teams').select('id, name, logo_url, owner_id, status').eq('owner_id', session.team1_user_id).maybeSingle(),
+            supabase.from('teams').select('id, name, logo_url, owner_id, status').eq('owner_id', session.team2_user_id).maybeSingle()
           ]);
-          
+
+          const [profile1, profile2, members1, members2] = await Promise.all([
+            supabase.from('profiles').select('display_name, avatar_url').eq('user_id', session.team1_user_id).maybeSingle(),
+            supabase.from('profiles').select('display_name, avatar_url').eq('user_id', session.team2_user_id).maybeSingle(),
+            team1Result.data ? supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', team1Result.data.id) : { count: 0 },
+            team2Result.data ? supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', team2Result.data.id) : { count: 0 }
+          ]);
+
           return {
             ...session,
-            team1_profile: profile1.data,
-            team2_profile: profile2.data
+            team1_data: team1Result.data ? {
+              id: team1Result.data.id,
+              name: team1Result.data.name,
+              logo_url: team1Result.data.logo_url,
+              owner_id: team1Result.data.owner_id!,
+              owner_name: profile1.data?.display_name || null,
+              owner_avatar: profile1.data?.avatar_url || null,
+              status: team1Result.data.status,
+              member_count: members1.count || 0
+            } : undefined,
+            team2_data: team2Result.data ? {
+              id: team2Result.data.id,
+              name: team2Result.data.name,
+              logo_url: team2Result.data.logo_url,
+              owner_id: team2Result.data.owner_id!,
+              owner_name: profile2.data?.display_name || null,
+              owner_avatar: profile2.data?.avatar_url || null,
+              status: team2Result.data.status,
+              member_count: members2.count || 0
+            } : undefined
           };
         })
       );
 
-      setSessions(sessionsWithProfiles);
+      setSessions(sessionsWithTeams);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -89,40 +157,14 @@ const AdminMapVeto = () => {
     }
   };
 
-  const fetchTeamOwners = async () => {
-    try {
-      const { data: teams, error } = await supabase
-        .from('teams')
-        .select('name, owner_id')
-        .not('owner_id', 'is', null);
-
-      if (error) throw error;
-
-      const ownersWithProfiles = await Promise.all(
-        (teams || []).map(async (team) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name, avatar_url')
-            .eq('user_id', team.owner_id!)
-            .maybeSingle();
-
-          return {
-            user_id: team.owner_id!,
-            team_name: team.name,
-            display_name: profile?.display_name,
-            avatar_url: profile?.avatar_url
-          };
-        })
-      );
-
-      setTeamOwners(ownersWithProfiles);
-    } catch (error) {
-      console.error('Error fetching team owners:', error);
-    }
-  };
+  const getSelectedTeam1Data = () => teams.find(t => t.id === selectedTeam1);
+  const getSelectedTeam2Data = () => teams.find(t => t.id === selectedTeam2);
 
   const createSession = async () => {
-    if (!selectedTeam1 || !selectedTeam2) {
+    const team1 = getSelectedTeam1Data();
+    const team2 = getSelectedTeam2Data();
+
+    if (!team1 || !team2) {
       toast({
         title: 'Błąd',
         description: 'Wybierz obie drużyny',
@@ -131,7 +173,7 @@ const AdminMapVeto = () => {
       return;
     }
 
-    if (selectedTeam1 === selectedTeam2) {
+    if (team1.id === team2.id) {
       toast({
         title: 'Błąd',
         description: 'Wybierz dwie różne drużyny',
@@ -148,8 +190,8 @@ const AdminMapVeto = () => {
       const { error } = await supabase
         .from('map_veto_sessions')
         .insert({
-          team1_user_id: selectedTeam1,
-          team2_user_id: selectedTeam2,
+          team1_user_id: team1.owner_id,
+          team2_user_id: team2.owner_id,
           created_by: user.id
         });
 
@@ -157,7 +199,7 @@ const AdminMapVeto = () => {
 
       toast({
         title: 'Sukces',
-        description: 'Sesja veto została utworzona'
+        description: `Sesja veto dla ${team1.name} vs ${team2.name} została utworzona`
       });
 
       setSelectedTeam1('');
@@ -236,6 +278,9 @@ const AdminMapVeto = () => {
     );
   }
 
+  const team1Data = getSelectedTeam1Data();
+  const team2Data = getSelectedTeam2Data();
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -244,7 +289,7 @@ const AdminMapVeto = () => {
           Zarządzanie Map Veto
         </h1>
         <p className="text-muted-foreground mt-2">
-          Twórz sesje wyboru map dla meczów i nadawaj dostęp kapitanom drużyn
+          Twórz sesje wyboru map dla meczów - kapitanowie (właściciele drużyn) otrzymają dostęp automatycznie
         </p>
       </div>
 
@@ -257,58 +302,140 @@ const AdminMapVeto = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Drużyna 1 (Kapitan)</Label>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Team 1 Selection */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-blue-500"></div>
+                Drużyna 1
+              </Label>
               <Select value={selectedTeam1} onValueChange={setSelectedTeam1}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz kapitana drużyny 1" />
+                <SelectTrigger className="h-auto py-3">
+                  <SelectValue placeholder="Wybierz drużynę..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {teamOwners.map((owner) => (
-                    <SelectItem key={owner.user_id} value={owner.user_id}>
-                      <div className="flex items-center gap-2">
-                        {owner.avatar_url && (
-                          <img src={owner.avatar_url} alt="" className="w-5 h-5 rounded-full" />
+                  {teams.filter(t => t.id !== selectedTeam2).map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      <div className="flex items-center gap-3 py-1">
+                        {team.logo_url ? (
+                          <img src={team.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+                            <Trophy className="w-4 h-4 text-muted-foreground" />
+                          </div>
                         )}
-                        <span>{owner.display_name || 'Brak nazwy'}</span>
-                        <span className="text-muted-foreground">({owner.team_name})</span>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{team.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {team.member_count} członków • {team.status === 'ready' ? 'Gotowa' : 'Przygotowuje się'}
+                          </span>
+                        </div>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            
-            <div>
-              <Label>Drużyna 2 (Kapitan)</Label>
-              <Select value={selectedTeam2} onValueChange={setSelectedTeam2}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz kapitana drużyny 2" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamOwners.map((owner) => (
-                    <SelectItem key={owner.user_id} value={owner.user_id}>
-                      <div className="flex items-center gap-2">
-                        {owner.avatar_url && (
-                          <img src={owner.avatar_url} alt="" className="w-5 h-5 rounded-full" />
-                        )}
-                        <span>{owner.display_name || 'Brak nazwy'}</span>
-                        <span className="text-muted-foreground">({owner.team_name})</span>
+
+              {/* Team 1 Preview */}
+              {team1Data && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                  <div className="flex items-center gap-4">
+                    {team1Data.logo_url ? (
+                      <img src={team1Data.logo_url} alt="" className="w-14 h-14 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center">
+                        <Trophy className="w-6 h-6 text-muted-foreground" />
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    )}
+                    <div className="flex-1">
+                      <div className="font-bold text-lg">{team1Data.name}</div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <UserCircle className="w-4 h-4" />
+                        <span>Kapitan: {team1Data.owner_name || 'Nieznany'}</span>
+                      </div>
+                    </div>
+                    {team1Data.owner_avatar && (
+                      <img src={team1Data.owner_avatar} alt="" className="w-10 h-10 rounded-full border-2 border-blue-500" />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-end">
-              <Button onClick={createSession} disabled={creating} className="w-full">
-                {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                Utwórz sesję
-              </Button>
+            {/* Team 2 Selection */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-orange-500"></div>
+                Drużyna 2
+              </Label>
+              <Select value={selectedTeam2} onValueChange={setSelectedTeam2}>
+                <SelectTrigger className="h-auto py-3">
+                  <SelectValue placeholder="Wybierz drużynę..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.filter(t => t.id !== selectedTeam1).map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      <div className="flex items-center gap-3 py-1">
+                        {team.logo_url ? (
+                          <img src={team.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+                            <Trophy className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="font-medium">{team.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {team.member_count} członków • {team.status === 'ready' ? 'Gotowa' : 'Przygotowuje się'}
+                          </span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Team 2 Preview */}
+              {team2Data && (
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
+                  <div className="flex items-center gap-4">
+                    {team2Data.logo_url ? (
+                      <img src={team2Data.logo_url} alt="" className="w-14 h-14 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center">
+                        <Trophy className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="font-bold text-lg">{team2Data.name}</div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <UserCircle className="w-4 h-4" />
+                        <span>Kapitan: {team2Data.owner_name || 'Nieznany'}</span>
+                      </div>
+                    </div>
+                    {team2Data.owner_avatar && (
+                      <img src={team2Data.owner_avatar} alt="" className="w-10 h-10 rounded-full border-2 border-orange-500" />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Create Button */}
+          <Button 
+            onClick={createSession} 
+            disabled={creating || !selectedTeam1 || !selectedTeam2} 
+            className="w-full"
+            size="lg"
+          >
+            {creating ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Plus className="w-4 h-4 mr-2" />
+            )}
+            Utwórz sesję veto
+          </Button>
         </CardContent>
       </Card>
 
@@ -317,7 +444,7 @@ const AdminMapVeto = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Aktywne sesje ({sessions.length})
+            Sesje veto ({sessions.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -334,37 +461,43 @@ const AdminMapVeto = () => {
               {sessions.map((session) => (
                 <div
                   key={session.id}
-                  className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border"
+                  className="flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border gap-4"
                 >
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4 flex-wrap">
                     {/* Team 1 */}
-                    <div className="flex items-center gap-2">
-                      {session.team1_profile?.avatar_url && (
-                        <img 
-                          src={session.team1_profile.avatar_url} 
-                          alt="" 
-                          className="w-8 h-8 rounded-full"
-                        />
+                    <div className="flex items-center gap-3 bg-blue-500/10 px-4 py-2 rounded-lg border border-blue-500/30">
+                      {session.team1_data?.logo_url ? (
+                        <img src={session.team1_data.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                          <Trophy className="w-5 h-5 text-muted-foreground" />
+                        </div>
                       )}
-                      <span className="font-medium">
-                        {session.team1_profile?.display_name || 'Nieznany'}
-                      </span>
+                      <div>
+                        <div className="font-semibold">{session.team1_data?.name || 'Nieznana drużyna'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {session.team1_data?.owner_name || 'Brak kapitana'}
+                        </div>
+                      </div>
                     </div>
 
-                    <span className="text-muted-foreground font-bold">VS</span>
+                    <span className="text-xl font-bold text-muted-foreground">VS</span>
 
                     {/* Team 2 */}
-                    <div className="flex items-center gap-2">
-                      {session.team2_profile?.avatar_url && (
-                        <img 
-                          src={session.team2_profile.avatar_url} 
-                          alt="" 
-                          className="w-8 h-8 rounded-full"
-                        />
+                    <div className="flex items-center gap-3 bg-orange-500/10 px-4 py-2 rounded-lg border border-orange-500/30">
+                      {session.team2_data?.logo_url ? (
+                        <img src={session.team2_data.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                          <Trophy className="w-5 h-5 text-muted-foreground" />
+                        </div>
                       )}
-                      <span className="font-medium">
-                        {session.team2_profile?.display_name || 'Nieznany'}
-                      </span>
+                      <div>
+                        <div className="font-semibold">{session.team2_data?.name || 'Nieznana drużyna'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {session.team2_data?.owner_name || 'Brak kapitana'}
+                        </div>
+                      </div>
                     </div>
 
                     <Badge variant={session.is_active ? 'default' : 'secondary'}>
@@ -376,7 +509,7 @@ const AdminMapVeto = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"
