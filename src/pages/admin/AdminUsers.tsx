@@ -528,58 +528,125 @@ const AdminUsers = () => {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left p-4 text-muted-foreground font-medium">Użytkownik</th>
-                <th className="text-left p-4 text-muted-foreground font-medium">Rola</th>
-                <th className="text-left p-4 text-muted-foreground font-medium">Data dodania</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Role</th>
                 <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
               </tr>
             </thead>
             <tbody>
-              {userRoles.map((ur) => (
-                <tr key={ur.id} className="border-b border-border/50 hover:bg-secondary/20">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                        {ur.profile?.avatar_url ? (
-                          <img src={ur.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Shield className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <span className="font-semibold text-foreground">
-                        {ur.profile?.display_name || 'Nieznany'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={cn(
-                      'px-3 py-1 rounded-full text-xs font-semibold',
-                      roleLabels[ur.role].color
-                    )}>
-                      {roleLabels[ur.role].label}
-                    </span>
-                  </td>
-                  <td className="p-4 text-muted-foreground">
-                    {new Date(ur.created_at).toLocaleDateString('pl-PL')}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeRole(ur.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {(() => {
+                // Group roles by user
+                const groupedByUser = userRoles.reduce((acc, ur) => {
+                  const userId = ur.user_id;
+                  if (!acc[userId]) {
+                    acc[userId] = {
+                      user_id: userId,
+                      profile: ur.profile,
+                      roles: [],
+                    };
+                  }
+                  acc[userId].roles.push({ id: ur.id, role: ur.role, created_at: ur.created_at });
+                  return acc;
+                }, {} as Record<string, { user_id: string; profile: UserWithRole['profile']; roles: { id: string; role: AppRole; created_at: string }[] }>);
+
+                const groupedUsers = Object.values(groupedByUser);
+
+                if (groupedUsers.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={3} className="text-center text-muted-foreground py-12">
+                        Brak ról użytkowników
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return groupedUsers.map((user) => {
+                  // Find roles this user doesn't have yet
+                  const existingRoles = user.roles.map(r => r.role);
+                  const availableRoles = (['owner', 'admin', 'commentator', 'support'] as AppRole[])
+                    .filter(r => !existingRoles.includes(r));
+
+                  return (
+                    <tr key={user.user_id} className="border-b border-border/50 hover:bg-secondary/20">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                            {user.profile?.avatar_url ? (
+                              <img src={user.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <Shield className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <span className="font-semibold text-foreground">
+                            {user.profile?.display_name || 'Nieznany'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {user.roles.map((r) => (
+                            <div key={r.id} className="flex items-center gap-1 group">
+                              <span className={cn(
+                                'px-3 py-1 rounded-full text-xs font-semibold',
+                                roleLabels[r.role].color
+                              )}>
+                                {roleLabels[r.role].label}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                                onClick={() => removeRole(r.id)}
+                                title="Usuń tę rolę"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          {availableRoles.length > 0 && (
+                            <Select
+                              onValueChange={async (role) => {
+                                setSaving(true);
+                                try {
+                                  const { error } = await supabase
+                                    .from('user_roles')
+                                    .insert({ user_id: user.user_id, role: role as AppRole });
+                                  if (error) throw error;
+                                  toast({ title: 'Rola dodana!' });
+                                  fetchUserRoles();
+                                } catch (error: any) {
+                                  toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-auto h-7 px-2 text-xs border-dashed">
+                                <Plus className="w-3 h-3 mr-1" />
+                                Dodaj rolę
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableRoles.map((r) => (
+                                  <SelectItem key={r} value={r}>
+                                    {roleLabels[r].label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex justify-end text-xs text-muted-foreground">
+                          {user.roles.length} {user.roles.length === 1 ? 'rola' : user.roles.length < 5 ? 'role' : 'ról'}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
-          {userRoles.length === 0 && (
-            <p className="text-center text-muted-foreground py-12">Brak ról użytkowników</p>
-          )}
         </div>
       )}
 
