@@ -215,17 +215,24 @@ const TeamDraw = () => {
     const fullRotations = 5 + Math.random() * 5;
     const randomIndex = Math.floor(Math.random() * teams.length);
     const segmentAngle = 360 / teams.length;
-    const targetAngle = 360 - (randomIndex * segmentAngle + segmentAngle / 2);
-    const totalRotation = rotation + fullRotations * 360 + targetAngle;
+    
+    // Strzałka wskazuje na górę (0 stopni w systemie koła to -90 stopni w SVG)
+    // Segment 0 zaczyna się od -90 stopni (góra), więc musimy obrócić koło
+    // tak aby środek wylosowanego segmentu znalazł się pod strzałką
+    // Środek segmentu i = i * segmentAngle + segmentAngle / 2
+    // Chcemy go obrócić do pozycji 0 (góra), ale segment zaczyna się od -90, więc już jest na górze
+    // Musimy obrócić o: -(randomIndex * segmentAngle + segmentAngle / 2)
+    const targetAngle = -(randomIndex * segmentAngle + segmentAngle / 2);
+    const totalRotation = fullRotations * 360 + targetAngle;
 
     // Tick sound effect during spin
     if (soundEnabled && audioContextRef.current) {
       const tickInterval = setInterval(() => {
         const currentRotation = wheelRef.current?.style.transform;
         if (currentRotation) {
-          const match = currentRotation.match(/rotate\(([\d.]+)deg\)/);
+          const match = currentRotation.match(/rotate\((-?[\d.]+)deg\)/);
           if (match) {
-            const currentAngle = parseFloat(match[1]) % 360;
+            const currentAngle = Math.abs(parseFloat(match[1])) % 360;
             const segmentsPassed = Math.floor(currentAngle / segmentAngle);
             if (segmentsPassed !== lastTickRef.current) {
               lastTickRef.current = segmentsPassed;
