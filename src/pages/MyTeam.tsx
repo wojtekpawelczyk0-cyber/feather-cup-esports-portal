@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Plus, Users, Shield, GraduationCap, Trash2, Loader2, Check, AlertCircle, CreditCard, Link2 } from 'lucide-react';
+import { Plus, Users, Shield, GraduationCap, Trash2, Loader2, Check, AlertCircle, CreditCard, Link2, Lock } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useTournamentSettings, isTeamEditingLocked } from '@/hooks/useTournamentSettings';
+import { format } from 'date-fns';
 
 type MemberRole = 'player' | 'reserve' | 'coach';
 type TeamStatus = 'preparing' | 'ready' | 'registered';
@@ -39,6 +41,7 @@ const MyTeam = () => {
   const { user, loading: authLoading, isSteamLinked } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { settings: tournamentSettings, loading: settingsLoading } = useTournamentSettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -54,6 +57,8 @@ const MyTeam = () => {
     role: 'player' as MemberRole,
     position: '',
   });
+  
+  const isLocked = isTeamEditingLocked(tournamentSettings.team_lock_date);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -157,6 +162,10 @@ const MyTeam = () => {
   };
 
   const createTeam = async () => {
+    if (isLocked) {
+      toast({ title: 'Rejestracja zablokowana', description: 'Termin rejestracji drużyn minął.', variant: 'destructive' });
+      return;
+    }
     if (!user || !newTeamName.trim()) return;
     setSaving(true);
     try {
@@ -178,6 +187,10 @@ const MyTeam = () => {
   const validateSteamId = (steamId: string): boolean => /^7656119\d{10}$/.test(steamId);
 
   const addMember = async () => {
+    if (isLocked) {
+      toast({ title: 'Edycja zablokowana', description: 'Termin edycji drużyn minął.', variant: 'destructive' });
+      return;
+    }
     if (!team || !newMember.nickname.trim()) return;
     if (!newMember.steam_id.trim()) {
       toast({ title: t('myteam.steam_id_required'), description: t('myteam.steam_id_required_desc'), variant: 'destructive' });
@@ -206,6 +219,10 @@ const MyTeam = () => {
   };
 
   const removeMember = async (memberId: string) => {
+    if (isLocked) {
+      toast({ title: 'Edycja zablokowana', description: 'Termin edycji drużyn minął.', variant: 'destructive' });
+      return;
+    }
     try {
       const { error } = await supabase.from('team_members').delete().eq('id', memberId);
       if (error) throw error;
@@ -237,6 +254,19 @@ const MyTeam = () => {
             </div>
           ) : team ? (
             <>
+              {/* Lock Alert */}
+              {isLocked && (
+                <div className="glass-card p-4 mb-6 border-2 border-destructive/30 bg-destructive/5">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-6 h-6 text-destructive flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold text-destructive">Edycja zablokowana</div>
+                      <p className="text-sm text-muted-foreground">Termin edycji składu drużyny minął. Nie możesz już dodawać ani usuwać graczy.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="glass-card p-6 mb-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
@@ -261,16 +291,19 @@ const MyTeam = () => {
                 </div>
               </div>
 
-              <div className="glass-card p-6 mb-6">
-                <h3 className="font-semibold text-foreground mb-4">{t('myteam.add_member')}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <div className="space-y-2"><Label>{t('myteam.nickname')}</Label><Input value={newMember.nickname} onChange={(e) => setNewMember({ ...newMember, nickname: e.target.value })} placeholder={t('myteam.nickname_placeholder')} className="bg-secondary/50" /></div>
-                  <div className="space-y-2"><Label>{t('myteam.steam_id')} <span className="text-destructive">*</span></Label><Input value={newMember.steam_id} onChange={(e) => setNewMember({ ...newMember, steam_id: e.target.value })} placeholder={t('myteam.steam_id_placeholder')} className="bg-secondary/50" /></div>
-                  <div className="space-y-2"><Label>{t('myteam.role')}</Label><Select value={newMember.role} onValueChange={(v) => setNewMember({ ...newMember, role: v as MemberRole })}><SelectTrigger className="bg-secondary/50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="player">{t('myteam.role_player')}</SelectItem><SelectItem value="reserve">{t('myteam.role_reserve')}</SelectItem><SelectItem value="coach">{t('myteam.role_coach')}</SelectItem></SelectContent></Select></div>
-                  <div className="space-y-2"><Label>{t('myteam.position')}</Label><Input value={newMember.position} onChange={(e) => setNewMember({ ...newMember, position: e.target.value })} placeholder={t('myteam.position_placeholder')} className="bg-secondary/50" /></div>
-                  <div className="flex items-end"><Button variant="hero" className="w-full" onClick={addMember} disabled={!newMember.nickname.trim() || saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}</Button></div>
+              {/* Add member form - hidden if locked */}
+              {!isLocked && (
+                <div className="glass-card p-6 mb-6">
+                  <h3 className="font-semibold text-foreground mb-4">{t('myteam.add_member')}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="space-y-2"><Label>{t('myteam.nickname')}</Label><Input value={newMember.nickname} onChange={(e) => setNewMember({ ...newMember, nickname: e.target.value })} placeholder={t('myteam.nickname_placeholder')} className="bg-secondary/50" /></div>
+                    <div className="space-y-2"><Label>{t('myteam.steam_id')} <span className="text-destructive">*</span></Label><Input value={newMember.steam_id} onChange={(e) => setNewMember({ ...newMember, steam_id: e.target.value })} placeholder={t('myteam.steam_id_placeholder')} className="bg-secondary/50" /></div>
+                    <div className="space-y-2"><Label>{t('myteam.role')}</Label><Select value={newMember.role} onValueChange={(v) => setNewMember({ ...newMember, role: v as MemberRole })}><SelectTrigger className="bg-secondary/50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="player">{t('myteam.role_player')}</SelectItem><SelectItem value="reserve">{t('myteam.role_reserve')}</SelectItem><SelectItem value="coach">{t('myteam.role_coach')}</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-2"><Label>{t('myteam.position')}</Label><Input value={newMember.position} onChange={(e) => setNewMember({ ...newMember, position: e.target.value })} placeholder={t('myteam.position_placeholder')} className="bg-secondary/50" /></div>
+                    <div className="flex items-end"><Button variant="hero" className="w-full" onClick={addMember} disabled={!newMember.nickname.trim() || saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}</Button></div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="glass-card p-6">
                 <h3 className="font-semibold text-foreground mb-4">{t('myteam.team_members')}</h3>
@@ -282,7 +315,9 @@ const MyTeam = () => {
                           <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">{member.role === 'player' && <Users className="w-5 h-5 text-primary" />}{member.role === 'reserve' && <Shield className="w-5 h-5 text-yellow-500" />}{member.role === 'coach' && <GraduationCap className="w-5 h-5 text-accent" />}</div>
                           <div><div className="font-semibold text-foreground">{member.nickname}</div><div className="text-sm text-muted-foreground">{member.role === 'player' ? t('myteam.role_player') : member.role === 'reserve' ? t('myteam.role_reserve') : t('myteam.role_coach')}{member.position && ` • ${member.position}`}</div></div>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeMember(member.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        {!isLocked && (
+                          <Button variant="ghost" size="icon" onClick={() => removeMember(member.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -295,6 +330,15 @@ const MyTeam = () => {
               <h2 className="text-2xl font-bold mb-2">{t('myteam.registration_closed')}</h2>
               <p className="text-muted-foreground mb-4">{t('myteam.max_teams_reached')} ({teamsLimitInfo.current}/{teamsLimitInfo.max}).</p>
               <p className="text-sm text-muted-foreground">{t('myteam.follow_us')}</p>
+            </div>
+          ) : isLocked ? (
+            <div className="glass-card p-8 text-center border-2 border-destructive/30">
+              <Lock className="w-16 h-16 mx-auto mb-4 text-destructive" />
+              <h2 className="text-2xl font-bold mb-2">Rejestracja zamknięta</h2>
+              <p className="text-muted-foreground mb-4">Termin rejestracji drużyn minął. Nie można już tworzyć nowych drużyn.</p>
+              {tournamentSettings.team_lock_date && (
+                <p className="text-sm text-muted-foreground">Blokada od: {format(new Date(tournamentSettings.team_lock_date), 'dd.MM.yyyy HH:mm')}</p>
+              )}
             </div>
           ) : (
             <div className="glass-card p-8 text-center">

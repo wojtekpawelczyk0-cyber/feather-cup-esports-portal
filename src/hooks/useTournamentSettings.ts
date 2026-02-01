@@ -17,6 +17,8 @@ interface TournamentSettings {
   site_description: string;
   favicon_url: string;
   og_image_url: string;
+  // Team lock
+  team_lock_date: string;
 }
 
 const defaultSettings: TournamentSettings = {
@@ -35,6 +37,15 @@ const defaultSettings: TournamentSettings = {
   site_description: 'Feather Cup - profesjonalny turniej CS2. Dołącz do rywalizacji i wygraj nagrody!',
   favicon_url: '',
   og_image_url: '',
+  // Team lock
+  team_lock_date: '',
+};
+
+// Helper to check if team editing is locked
+export const isTeamEditingLocked = (lockDateStr: string): boolean => {
+  if (!lockDateStr) return false;
+  const lockDate = new Date(lockDateStr);
+  return !isNaN(lockDate.getTime()) && new Date() >= lockDate;
 };
 
 export const useTournamentSettings = () => {
