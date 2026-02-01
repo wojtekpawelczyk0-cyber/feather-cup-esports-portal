@@ -211,8 +211,9 @@ const TeamDraw = () => {
     setIsSpinning(true);
     setSelectedTeam(null);
 
-    // Random number of full rotations (5-10) plus random position
-    const fullRotations = 5 + Math.random() * 5;
+    // Random number of FULL rotations (5-10) plus a precise final angle
+    // (ułamkowe "pełne obroty" psuły synchronizację wskazania ze strzałką)
+    const fullRotations = 5 + Math.floor(Math.random() * 6);
     const randomIndex = Math.floor(Math.random() * teams.length);
     const segmentAngle = 360 / teams.length;
     
@@ -222,8 +223,17 @@ const TeamDraw = () => {
     // Środek segmentu i = i * segmentAngle + segmentAngle / 2
     // Chcemy go obrócić do pozycji 0 (góra), ale segment zaczyna się od -90, więc już jest na górze
     // Musimy obrócić o: -(randomIndex * segmentAngle + segmentAngle / 2)
+    // Docelowy kąt (mod 360) tak, aby środek wylosowanego segmentu trafił pod strzałkę.
     const targetAngle = -(randomIndex * segmentAngle + segmentAngle / 2);
-    const totalRotation = fullRotations * 360 + targetAngle;
+
+    // Ponieważ `rotation` jest akumulowane, musimy policzyć DELTĘ do docelowego kąta
+    // względem aktualnego położenia (żeby finalnie wskazanie i wynik były spójne).
+    const normalize360 = (deg: number) => ((deg % 360) + 360) % 360;
+    const currentAngle = normalize360(rotation);
+    const desiredAngle = normalize360(targetAngle);
+    const deltaToDesired = normalize360(desiredAngle - currentAngle);
+
+    const totalRotation = rotation + fullRotations * 360 + deltaToDesired;
 
     // Tick sound effect during spin
     if (soundEnabled && audioContextRef.current) {
