@@ -254,33 +254,14 @@ const TeamDraw = () => {
     }, 5000);
   }, [teams, isSpinning, rotation, soundEnabled, fireConfetti]);
 
-  const deleteTeam = async () => {
+  const deleteTeam = () => {
     if (!selectedTeam) return;
 
-    const { error, count } = await supabase
-      .from('teams')
-      .delete({ count: 'exact' })
-      .eq('id', selectedTeam.id);
-
-    if (error) {
-      toast.error(`Błąd podczas usuwania drużyny: ${error.message}`);
-      console.error('Delete error:', error);
-      return;
-    }
-
-    if (count === 0) {
-      toast.error('Nie udało się usunąć drużyny. Brak uprawnień lub drużyna nie istnieje.');
-      console.error('Delete returned 0 rows affected - RLS policy may be blocking the delete');
-      return;
-    }
-
-    toast.success(`Drużyna ${selectedTeam.name} została usunięta z bazy danych`);
+    // Usuwanie tylko lokalne - drużyna zostaje w bazie danych
+    toast.success(`Drużyna ${selectedTeam.name} została usunięta z koła fortuny`);
     setTeams(teams.filter(t => t.id !== selectedTeam.id));
     setSelectedTeam(null);
     setDeleteDialogOpen(false);
-    
-    // Refresh teams list to ensure sync with database
-    fetchTeams();
   };
 
   const resetWheel = () => {
