@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube, Image, Globe, FileImage } from 'lucide-react';
+import { Loader2, Save, Trophy, Calendar, Zap, Users, Link2, Twitter, Youtube, Image, Globe, FileImage, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import FileUpload from '@/components/admin/FileUpload';
+import { format } from 'date-fns';
 interface Setting {
   id: string;
   key: string;
@@ -42,6 +43,8 @@ const AdminSettings = () => {
     footer_twitch: '',
     footer_discord: '',
     footer_copyright: '© 2024 Feather Cup. Wszelkie prawa zastrzeżone.',
+    // Team lock
+    team_lock_date: '',
   });
 
   useEffect(() => {
@@ -218,6 +221,52 @@ const AdminSettings = () => {
                 onChange={(e) => setSettings({ ...settings, tournament_name: e.target.value })}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Team Lock Settings */}
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Lock className="w-5 h-5 text-primary" />
+            Blokada edycji drużyn
+          </h2>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="team_lock_date">Data i godzina blokady</Label>
+              <Input
+                id="team_lock_date"
+                type="datetime-local"
+                value={settings.team_lock_date ? format(new Date(settings.team_lock_date), "yyyy-MM-dd'T'HH:mm") : ''}
+                onChange={(e) => setSettings({ ...settings, team_lock_date: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                className="bg-secondary/50"
+              />
+              <p className="text-xs text-muted-foreground">
+                Po tej dacie użytkownicy nie będą mogli edytować swoich drużyn, dodawać/usuwać graczy ani tworzyć nowych drużyn.
+                Pozostaw puste, aby zezwolić na edycję bez ograniczeń czasowych.
+              </p>
+              {settings.team_lock_date && new Date(settings.team_lock_date) <= new Date() && (
+                <div className="flex items-center gap-2 text-destructive text-sm mt-2">
+                  <Lock className="w-4 h-4" />
+                  <span>Blokada jest aktywna - edycja drużyn jest zablokowana</span>
+                </div>
+              )}
+              {settings.team_lock_date && new Date(settings.team_lock_date) > new Date() && (
+                <div className="flex items-center gap-2 text-yellow-500 text-sm mt-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Blokada nastąpi: {format(new Date(settings.team_lock_date), 'dd.MM.yyyy HH:mm')}</span>
+                </div>
+              )}
+            </div>
+            {settings.team_lock_date && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSettings({ ...settings, team_lock_date: '' })}
+                className="text-destructive border-destructive/50 hover:bg-destructive/10"
+              >
+                Usuń blokadę
+              </Button>
+            )}
           </div>
         </div>
 
