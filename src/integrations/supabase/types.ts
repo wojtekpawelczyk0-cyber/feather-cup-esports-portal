@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      map_veto_actions: {
+        Row: {
+          action: Database["public"]["Enums"]["map_veto_action_type"]
+          created_at: string
+          id: string
+          is_auto: boolean
+          map_id: string
+          performed_by: string
+          performed_by_team: string
+          session_code: string
+          session_id: string
+          step: number
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["map_veto_action_type"]
+          created_at?: string
+          id?: string
+          is_auto?: boolean
+          map_id: string
+          performed_by: string
+          performed_by_team: string
+          session_code: string
+          session_id: string
+          step: number
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["map_veto_action_type"]
+          created_at?: string
+          id?: string
+          is_auto?: boolean
+          map_id?: string
+          performed_by?: string
+          performed_by_team?: string
+          session_code?: string
+          session_id?: string
+          step?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_veto_actions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "map_veto_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_veto_sessions: {
         Row: {
           created_at: string | null
@@ -492,6 +539,7 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "admin" | "commentator" | "support"
+      map_veto_action_type: "ban" | "pick" | "decider" | "random"
       match_status: "scheduled" | "live" | "finished" | "cancelled"
       member_role: "player" | "reserve" | "coach"
       team_status: "preparing" | "ready" | "registered"
@@ -623,6 +671,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "admin", "commentator", "support"],
+      map_veto_action_type: ["ban", "pick", "decider", "random"],
       match_status: ["scheduled", "live", "finished", "cancelled"],
       member_role: ["player", "reserve", "coach"],
       team_status: ["preparing", "ready", "registered"],

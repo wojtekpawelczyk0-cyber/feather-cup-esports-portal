@@ -64,10 +64,11 @@ interface UseMapVetoRealtimeProps {
 export interface VetoHistoryEntry {
   step: number;
   team: 1 | 2 | null;
-  action: 'ban' | 'pick' | 'decider';
+  action: 'ban' | 'pick' | 'decider' | 'random';
   mapId: string;
   mapName: string;
   timestamp: string;
+  isAuto: boolean;
 }
 
 interface SessionState {
@@ -78,7 +79,32 @@ interface SessionState {
   format: VetoFormat;
   step_started_at: string | null;
   updated_at: string;
+  team1_user_id: string;
+  team2_user_id: string;
 }
+
+interface ActionRow {
+  id: string;
+  session_id: string;
+  session_code: string;
+  step: number;
+  action: 'ban' | 'pick' | 'decider' | 'random';
+  map_id: string;
+  performed_by: string;
+  performed_by_team: string;
+  is_auto: boolean;
+  created_at: string;
+}
+
+const mapNameById: Record<string, string> = {
+  mirage: 'Mirage',
+  dust2: 'Dust II',
+  anubis: 'Anubis',
+  inferno: 'Inferno',
+  vertigo: 'Vertigo',
+  nuke: 'Nuke',
+  ancient: 'Ancient',
+};
 
 export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: initialFormat = 'bo3' }: UseMapVetoRealtimeProps) => {
   const [maps, setMaps] = useState<MapData[]>(initialMaps);
@@ -91,10 +117,13 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
   const [vetoHistory, setVetoHistory] = useState<VetoHistoryEntry[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [stepStartedAt, setStepStartedAt] = useState<string | null>(null);
+  const [team1UserId, setTeam1UserId] = useState<string | null>(null);
+  const [team2UserId, setTeam2UserId] = useState<string | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdateRef = useRef<string | null>(null);
+  const lastSessionUpdateRef = useRef<string | null>(null);
+  const lastActionsCountRef = useRef<number>(0);
   const { toast } = useToast();
 
   const vetoOrder = getVetoOrder(format);
@@ -103,79 +132,21 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
   // Only team captains (userTeam 1 or 2) can act - admins/owners can only spectate
   const canAct = !sessionCode ? true : (userTeam === currentVeto?.team);
 
-  // Helper to rebuild history from current state
-  const rebuildHistoryFromState = useCallback((currentMaps: MapData[], vetoOrderForFormat: VetoStep[]) => {
-    const history: VetoHistoryEntry[] = [];
-    
-    // Build history based on map statuses
-    currentMaps.forEach(map => {
-      if (map.status === 'banned_team1') {
-        history.push({
-          step: history.length,
-          team: 1,
-          action: 'ban',
-          mapId: map.id,
-          mapName: map.name,
-          timestamp: new Date().toISOString()
-        });
-      } else if (map.status === 'banned_team2') {
-        history.push({
-          step: history.length,
-          team: 2,
-          action: 'ban',
-          mapId: map.id,
-          mapName: map.name,
-          timestamp: new Date().toISOString()
-        });
-      } else if (map.status === 'picked_team1') {
-        history.push({
-          step: history.length,
-          team: 1,
-          action: 'pick',
-          mapId: map.id,
-          mapName: map.name,
-          timestamp: new Date().toISOString()
-        });
-      } else if (map.status === 'picked_team2') {
-        history.push({
-          step: history.length,
-          team: 2,
-          action: 'pick',
-          mapId: map.id,
-          mapName: map.name,
-          timestamp: new Date().toISOString()
-        });
-      } else if (map.status === 'decider') {
-        history.push({
-          step: history.length,
-          team: null,
-          action: 'decider',
-          mapId: map.id,
-          mapName: map.name,
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
-
-    return history;
-  }, []);
-
   // Apply session state to local state
   const applySessionState = useCallback((session: SessionState) => {
-    console.log('Applying session state:', session);
-    
     // Skip if this update is older than the last one we processed
-    if (lastUpdateRef.current && session.updated_at <= lastUpdateRef.current) {
-      console.log('Skipping older update');
+    if (lastSessionUpdateRef.current && session.updated_at <= lastSessionUpdateRef.current) {
       return;
     }
-    lastUpdateRef.current = session.updated_at;
+    lastSessionUpdateRef.current = session.updated_at;
     
     setSessionId(session.id);
     setCurrentStep(session.current_step || 0);
     setIsComplete(session.is_complete || false);
     setFormat(session.format || 'bo3');
     setStepStartedAt(session.step_started_at);
+    setTeam1UserId(session.team1_user_id);
+    setTeam2UserId(session.team2_user_id);
     
     if (session.maps_state && Array.isArray(session.maps_state) && session.maps_state.length > 0) {
       const savedState = session.maps_state;
@@ -184,15 +155,30 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
         return saved ? { ...map, status: saved.status } : map;
       });
       setMaps(mergedMaps);
-      
-      // Build history from saved state
-      const history = rebuildHistoryFromState(mergedMaps, getVetoOrder(session.format || 'bo3'));
-      setVetoHistory(history);
     }
-  }, [rebuildHistoryFromState]);
+  }, []);
+
+  // Apply actions to history
+  const applyActionsToHistory = useCallback((actions: ActionRow[]) => {
+    if (actions.length === lastActionsCountRef.current) {
+      return; // No new actions
+    }
+    lastActionsCountRef.current = actions.length;
+    
+    const history: VetoHistoryEntry[] = actions.map(a => ({
+      step: a.step,
+      team: a.performed_by_team === 'team1' ? 1 : a.performed_by_team === 'team2' ? 2 : null,
+      action: a.action as 'ban' | 'pick' | 'decider' | 'random',
+      mapId: a.map_id,
+      mapName: mapNameById[a.map_id] || a.map_id,
+      timestamp: a.created_at,
+      isAuto: a.is_auto,
+    }));
+    setVetoHistory(history);
+  }, []);
 
   // Fetch current session state
-  const fetchSessionState = useCallback(async () => {
+  const fetchSessionState = useCallback(async (): Promise<SessionState | null> => {
     if (!sessionCode) return null;
     
     try {
@@ -210,19 +196,42 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
 
       if (!session) return null;
       
-      // Cast to SessionState since we're using new columns
       return {
         id: session.id,
         current_step: session.current_step || 0,
         maps_state: session.maps_state as { id: string; status: MapStatus }[] | null,
         is_complete: session.is_complete || false,
         format: (session.format as VetoFormat) || 'bo3',
-        step_started_at: (session as any).step_started_at || null,
-        updated_at: (session as any).updated_at || new Date().toISOString()
-      } as SessionState;
+        step_started_at: session.step_started_at || null,
+        updated_at: session.updated_at || new Date().toISOString(),
+        team1_user_id: session.team1_user_id,
+        team2_user_id: session.team2_user_id,
+      };
     } catch (err) {
       console.error('Error in fetchSessionState:', err);
       return null;
+    }
+  }, [sessionCode]);
+
+  // Fetch actions from DB
+  const fetchActions = useCallback(async (): Promise<ActionRow[]> => {
+    if (!sessionCode) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('map_veto_actions')
+        .select('*')
+        .eq('session_code', sessionCode)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching actions:', error);
+        return [];
+      }
+      return (data || []) as ActionRow[];
+    } catch (err) {
+      console.error('Error in fetchActions:', err);
+      return [];
     }
   }, [sessionCode]);
 
@@ -327,18 +336,24 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     let retryTimeoutId: NodeJS.Timeout | null = null;
     let isMounted = true;
 
-    const loadInitialState = async () => {
-      const session = await fetchSessionState();
+    const loadAll = async () => {
+      const [session, actions] = await Promise.all([
+        fetchSessionState(),
+        fetchActions()
+      ]);
       if (session && isMounted) {
         applySessionState(session);
       }
+      if (isMounted) {
+        applyActionsToHistory(actions);
+      }
     };
 
-    loadInitialState();
+    loadAll();
 
-    // Setup realtime subscription
-    const channel = supabase
-      .channel(`map-veto-live-${sessionCode}`)
+    // Setup realtime subscription for session
+    const sessionChannel = supabase
+      .channel(`map-veto-session-${sessionCode}`)
       .on(
         'postgres_changes',
         {
@@ -348,7 +363,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
           filter: `session_code=eq.${sessionCode}`
         },
         (payload) => {
-          console.log('Realtime update received:', payload);
+          console.log('Session update received:', payload);
           if (payload.new && isMounted) {
             const newData = payload.new as any;
             applySessionState({
@@ -358,42 +373,62 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
               is_complete: newData.is_complete,
               format: newData.format,
               step_started_at: newData.step_started_at,
-              updated_at: newData.updated_at || new Date().toISOString()
+              updated_at: newData.updated_at || new Date().toISOString(),
+              team1_user_id: newData.team1_user_id,
+              team2_user_id: newData.team2_user_id,
             });
           }
         }
       )
       .subscribe((status, err) => {
-        console.log('Realtime subscription status:', status, err);
+        console.log('Session subscription status:', status, err);
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setConnectionStatus('disconnected');
-          // Auto-retry subscription
           retryTimeoutId = setTimeout(() => {
-            if (isMounted) channel.subscribe();
+            if (isMounted) sessionChannel.subscribe();
           }, 3000);
         } else if (status === 'CLOSED') {
           setConnectionStatus('disconnected');
         }
       });
 
+    // Setup realtime subscription for actions
+    const actionsChannel = supabase
+      .channel(`map-veto-actions-${sessionCode}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'map_veto_actions',
+          filter: `session_code=eq.${sessionCode}`
+        },
+        async () => {
+          console.log('New action received, refetching actions');
+          if (isMounted) {
+            const actions = await fetchActions();
+            applyActionsToHistory(actions);
+          }
+        }
+      )
+      .subscribe();
+
     // Fallback polling - every 2 seconds
     pollIntervalRef.current = setInterval(async () => {
       if (!isMounted) return;
-      const session = await fetchSessionState();
-      if (session && isMounted) {
-        applySessionState(session);
-      }
+      await loadAll();
     }, 2000);
 
     return () => {
       isMounted = false;
       if (retryTimeoutId) clearTimeout(retryTimeoutId);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(sessionChannel);
+      supabase.removeChannel(actionsChannel);
     };
-  }, [sessionCode, fetchSessionState, applySessionState]);
+  }, [sessionCode, fetchSessionState, fetchActions, applySessionState, applyActionsToHistory]);
 
   // Handle random map selection after timeout
   const handleRandomMapSelect = useCallback((mapId: string) => {
@@ -440,16 +475,75 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     // If in session mode, sync to database FIRST for real-time sync
     if (sessionCode && sessionId) {
       const mapsState = newMaps.map(m => ({ id: m.id, status: m.status }));
-      const newStepStartedAt = completed ? null : new Date().toISOString();
       
+      // Get current user id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Błąd',
+          description: 'Musisz być zalogowany',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Determine performed_by_team
+      let performedByTeam = 'system';
+      if (user.id === team1UserId) performedByTeam = 'team1';
+      else if (user.id === team2UserId) performedByTeam = 'team2';
+
+      // Insert action to action log FIRST
+      const actionType = isAutoSelect ? 'random' : action;
+
+      const { error: actionError } = await supabase
+        .from('map_veto_actions')
+        .insert({
+          session_id: sessionId,
+          session_code: sessionCode,
+          step: currentStep,
+          action: actionType as 'ban' | 'pick' | 'decider' | 'random',
+          map_id: mapId,
+          performed_by: user.id,
+          performed_by_team: performedByTeam,
+          is_auto: isAutoSelect,
+        });
+
+      if (actionError) {
+        console.error('Error inserting action:', actionError);
+        toast({
+          title: 'Błąd',
+          description: 'Nie udało się zapisać akcji',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // If completed and there's a decider, insert decider action too
+      if (completed) {
+        const deciderMap = newMaps.find(m => m.status === 'decider');
+        if (deciderMap) {
+          await supabase
+            .from('map_veto_actions')
+            .insert({
+              session_id: sessionId,
+              session_code: sessionCode,
+              step: newStep,
+              action: 'decider' as const,
+              map_id: deciderMap.id,
+              performed_by: user.id,
+              performed_by_team: 'system',
+              is_auto: true,
+            });
+        }
+      }
+
+      // Update session state
       const { error } = await supabase
         .from('map_veto_sessions')
         .update({
           current_step: newStep,
           maps_state: mapsState,
           is_complete: completed,
-          step_started_at: newStepStartedAt,
-          updated_at: new Date().toISOString()
         })
         .eq('id', sessionId);
 
@@ -468,34 +562,37 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     setMaps(newMaps);
     setCurrentStep(newStep);
     setIsComplete(completed);
-    setStepStartedAt(completed ? null : new Date().toISOString());
     
-    // Add to history
-    const historyEntry: VetoHistoryEntry = {
-      step: currentStep,
-      team: team,
-      action: action,
-      mapId: mapId,
-      mapName: map.name,
-      timestamp: new Date().toISOString()
-    };
-    setVetoHistory(prev => [...prev, historyEntry]);
-    
-    // Add decider to history if complete
-    if (completed) {
-      const deciderMap = newMaps.find(m => m.status === 'decider');
-      if (deciderMap) {
-        setVetoHistory(prev => [...prev, {
-          step: newStep,
-          team: null,
-          action: 'decider',
-          mapId: deciderMap.id,
-          mapName: deciderMap.name,
-          timestamp: new Date().toISOString()
-        }]);
+    // In demo mode, add to history locally
+    if (!sessionCode) {
+      const historyEntry: VetoHistoryEntry = {
+        step: currentStep,
+        team: team,
+        action: isAutoSelect ? 'random' : action,
+        mapId: mapId,
+        mapName: map.name,
+        timestamp: new Date().toISOString(),
+        isAuto: isAutoSelect,
+      };
+      setVetoHistory(prev => [...prev, historyEntry]);
+      
+      // Add decider to history if complete
+      if (completed) {
+        const deciderMap = newMaps.find(m => m.status === 'decider');
+        if (deciderMap) {
+          setVetoHistory(prev => [...prev, {
+            step: newStep,
+            team: null,
+            action: 'decider',
+            mapId: deciderMap.id,
+            mapName: deciderMap.name,
+            timestamp: new Date().toISOString(),
+            isAuto: true,
+          }]);
+        }
       }
     }
-  }, [maps, currentStep, isVetoComplete, isComplete, canAct, currentVeto, sessionCode, sessionId, vetoOrder.length, toast]);
+  }, [maps, currentStep, isVetoComplete, isComplete, canAct, currentVeto, sessionCode, sessionId, vetoOrder.length, toast, team1UserId, team2UserId]);
 
   // Handle map click (wrapper for external use)
   const handleMapClick = useCallback(async (mapId: string) => {
