@@ -26,8 +26,10 @@ export type Database = {
           maps_state: Json | null
           match_id: string | null
           session_code: string | null
+          step_started_at: string | null
           team1_user_id: string
           team2_user_id: string
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -40,8 +42,10 @@ export type Database = {
           maps_state?: Json | null
           match_id?: string | null
           session_code?: string | null
+          step_started_at?: string | null
           team1_user_id: string
           team2_user_id: string
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -54,8 +58,10 @@ export type Database = {
           maps_state?: Json | null
           match_id?: string | null
           session_code?: string | null
+          step_started_at?: string | null
           team1_user_id?: string
           team2_user_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
