@@ -42,6 +42,7 @@ const MapVeto = () => {
     timeLeft,
     isRandomizing,
     vetoHistory,
+    connectionStatus,
     handleMapClick,
     handleRandomMapSelect,
     resetVeto
@@ -219,9 +220,26 @@ const MapVeto = () => {
               </Badge>
             )}
             {sessionCode && (
-              <Badge variant="outline" className="gap-1 border-emerald-500 text-emerald-400">
-                <Wifi className="w-3 h-3" />
-                Na żywo
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "gap-1",
+                  connectionStatus === 'connected' 
+                    ? "border-emerald-500 text-emerald-400" 
+                    : connectionStatus === 'connecting'
+                      ? "border-yellow-500 text-yellow-400"
+                      : "border-red-500 text-red-400"
+                )}
+              >
+                <Wifi className={cn(
+                  "w-3 h-3",
+                  connectionStatus === 'disconnected' && "animate-pulse"
+                )} />
+                {connectionStatus === 'connected' 
+                  ? 'Na żywo' 
+                  : connectionStatus === 'connecting' 
+                    ? 'Łączenie...' 
+                    : 'Rozłączono'}
               </Badge>
             )}
           </div>

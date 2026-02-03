@@ -198,7 +198,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     try {
       const { data: session, error } = await supabase
         .from('map_veto_sessions')
-        .select('id, current_step, maps_state, is_complete, format, step_started_at, updated_at')
+        .select('*')
         .eq('session_code', sessionCode)
         .eq('is_active', true)
         .maybeSingle();
@@ -208,7 +208,18 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
         return null;
       }
 
-      return session as SessionState | null;
+      if (!session) return null;
+      
+      // Cast to SessionState since we're using new columns
+      return {
+        id: session.id,
+        current_step: session.current_step || 0,
+        maps_state: session.maps_state as { id: string; status: MapStatus }[] | null,
+        is_complete: session.is_complete || false,
+        format: (session.format as VetoFormat) || 'bo3',
+        step_started_at: (session as any).step_started_at || null,
+        updated_at: (session as any).updated_at || new Date().toISOString()
+      } as SessionState;
     } catch (err) {
       console.error('Error in fetchSessionState:', err);
       return null;
