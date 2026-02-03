@@ -61,6 +61,15 @@ interface UseMapVetoRealtimeProps {
   format?: VetoFormat;
 }
 
+export interface VetoHistoryEntry {
+  step: number;
+  team: 1 | 2 | null;
+  action: 'ban' | 'pick' | 'decider';
+  mapId: string;
+  mapName: string;
+  timestamp: string;
+}
+
 export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: initialFormat = 'bo3' }: UseMapVetoRealtimeProps) => {
   const [maps, setMaps] = useState<MapData[]>(initialMaps);
   const [currentStep, setCurrentStep] = useState(0);
@@ -69,6 +78,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
   const [format, setFormat] = useState<VetoFormat>(initialFormat);
   const [timeLeft, setTimeLeft] = useState(VETO_TIME_LIMIT);
   const [isRandomizing, setIsRandomizing] = useState(false);
+  const [vetoHistory, setVetoHistory] = useState<VetoHistoryEntry[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -152,12 +162,72 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
             return saved ? { ...map, status: saved.status } : map;
           });
           setMaps(mergedMaps);
+          
+          // Build history from saved state
+          rebuildHistoryFromState(mergedMaps, session.current_step || 0, getVetoOrder((session.format as VetoFormat) || 'bo3'));
         }
       }
     };
 
     loadSessionState();
   }, [sessionCode]);
+
+  // Helper to rebuild history from current state
+  const rebuildHistoryFromState = (currentMaps: MapData[], step: number, order: VetoStep[]) => {
+    const history: VetoHistoryEntry[] = [];
+    
+    // Build history based on map statuses
+    currentMaps.forEach(map => {
+      if (map.status === 'banned_team1') {
+        history.push({
+          step: history.length,
+          team: 1,
+          action: 'ban',
+          mapId: map.id,
+          mapName: map.name,
+          timestamp: new Date().toISOString()
+        });
+      } else if (map.status === 'banned_team2') {
+        history.push({
+          step: history.length,
+          team: 2,
+          action: 'ban',
+          mapId: map.id,
+          mapName: map.name,
+          timestamp: new Date().toISOString()
+        });
+      } else if (map.status === 'picked_team1') {
+        history.push({
+          step: history.length,
+          team: 1,
+          action: 'pick',
+          mapId: map.id,
+          mapName: map.name,
+          timestamp: new Date().toISOString()
+        });
+      } else if (map.status === 'picked_team2') {
+        history.push({
+          step: history.length,
+          team: 2,
+          action: 'pick',
+          mapId: map.id,
+          mapName: map.name,
+          timestamp: new Date().toISOString()
+        });
+      } else if (map.status === 'decider') {
+        history.push({
+          step: history.length,
+          team: null,
+          action: 'decider',
+          mapId: map.id,
+          mapName: map.name,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    setVetoHistory(history);
+  };
 
   // Subscribe to realtime updates
   useEffect(() => {
@@ -188,6 +258,9 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
               return saved ? { ...map, status: saved.status } : map;
             });
             setMaps(mergedMaps);
+            
+            // Rebuild history on realtime update
+            rebuildHistoryFromState(mergedMaps, newData.current_step || 0, getVetoOrder(newData.format as VetoFormat || 'bo3'));
           }
         }
       )
@@ -240,6 +313,32 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     setCurrentStep(newStep);
     setIsComplete(completed);
     setTimeLeft(VETO_TIME_LIMIT); // Reset timer for next step
+    
+    // Add to history
+    const historyEntry: VetoHistoryEntry = {
+      step: currentStep,
+      team: team,
+      action: action,
+      mapId: mapId,
+      mapName: map.name,
+      timestamp: new Date().toISOString()
+    };
+    setVetoHistory(prev => [...prev, historyEntry]);
+    
+    // Add decider to history if complete
+    if (completed) {
+      const deciderMap = newMaps.find(m => m.status === 'decider');
+      if (deciderMap) {
+        setVetoHistory(prev => [...prev, {
+          step: newStep,
+          team: null,
+          action: 'decider',
+          mapId: deciderMap.id,
+          mapName: deciderMap.name,
+          timestamp: new Date().toISOString()
+        }]);
+      }
+    }
 
     // If in session mode, sync to database
     if (sessionCode && sessionId) {
@@ -277,6 +376,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     setIsComplete(false);
     setTimeLeft(VETO_TIME_LIMIT);
     setIsRandomizing(false);
+    setVetoHistory([]);
     if (newFormat) setFormat(newFormat);
   }, []);
 
@@ -291,6 +391,7 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
     vetoOrder,
     timeLeft,
     isRandomizing,
+    vetoHistory,
     handleMapClick,
     handleRandomMapSelect,
     resetVeto,

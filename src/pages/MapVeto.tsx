@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { RotateCcw, Swords, Lock, Loader2, Wifi } from 'lucide-react';
+import { RotateCcw, Swords, Lock, Loader2, Wifi, Eye, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useMapVetoRealtime, MapData, VetoFormat, VETO_TIME_LIMIT } from '@/hooks/useMapVetoRealtime';
+import { useMapVetoRealtime, MapData, VetoFormat, VETO_TIME_LIMIT, getVetoOrder } from '@/hooks/useMapVetoRealtime';
 import { VetoTimer } from '@/components/mapveto/VetoTimer';
 import { RandomMapAnimation } from '@/components/mapveto/RandomMapAnimation';
 
@@ -17,7 +17,7 @@ type MapStatus = 'available' | 'banned_team1' | 'banned_team2' | 'picked_team1' 
 const MapVeto = () => {
   const [searchParams] = useSearchParams();
   const sessionCode = searchParams.get('code');
-  const { user } = useAuth();
+  const { user, userRoles } = useAuth();
   
   const [team1Name, setTeam1Name] = useState('Drużyna 1');
   const [team2Name, setTeam2Name] = useState('Drużyna 2');
@@ -27,6 +27,7 @@ const MapVeto = () => {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTeam, setUserTeam] = useState<1 | 2 | null>(null);
+  const [isSpectator, setIsSpectator] = useState(false);
 
   // Realtime hook
   const {
@@ -40,6 +41,7 @@ const MapVeto = () => {
     vetoOrder,
     timeLeft,
     isRandomizing,
+    vetoHistory,
     handleMapClick,
     handleRandomMapSelect,
     resetVeto
@@ -79,19 +81,22 @@ const MapVeto = () => {
         if (user.id === session.team1_user_id) {
           setUserTeam(1);
           setHasAccess(true);
+          setIsSpectator(false);
         } else if (user.id === session.team2_user_id) {
           setUserTeam(2);
           setHasAccess(true);
+          setIsSpectator(false);
         } else {
-          // Check if user is owner
+          // Check if user is owner/admin - they can spectate
           const { data: roles } = await supabase
             .from('user_roles')
             .select('role')
             .eq('user_id', user.id)
-            .eq('role', 'owner');
+            .in('role', ['owner', 'admin']);
           
           if (roles && roles.length > 0) {
             setHasAccess(true);
+            setIsSpectator(true); // Admin/owner can only spectate
           }
         }
       }
@@ -199,15 +204,23 @@ const MapVeto = () => {
           <p className="text-muted-foreground">
             System wyboru map - {format === 'bo1' ? 'Best of 1' : 'Best of 3'}
           </p>
-          <div className="flex items-center justify-center gap-2 mt-2">
+          <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
             {userTeam && (
-              <Badge variant="outline">
-                Jesteś: {userTeam === 1 ? team1Name : team2Name}
+              <Badge variant="outline" className={cn(
+                userTeam === 1 ? "border-blue-500 text-blue-400" : "border-orange-500 text-orange-400"
+              )}>
+                Kapitan: {userTeam === 1 ? team1Name : team2Name}
+              </Badge>
+            )}
+            {isSpectator && (
+              <Badge variant="outline" className="gap-1 border-purple-500 text-purple-400">
+                <Eye className="w-3 h-3" />
+                Tryb obserwatora
               </Badge>
             )}
             {sessionCode && (
-              <Badge variant="outline" className="gap-1">
-                <Wifi className="w-3 h-3 text-emerald-500" />
+              <Badge variant="outline" className="gap-1 border-emerald-500 text-emerald-400">
+                <Wifi className="w-3 h-3" />
                 Na żywo
               </Badge>
             )}
@@ -280,7 +293,10 @@ const MapVeto = () => {
               )} />
             )}
             {getCurrentActionText()}
-            {!canAct && !isComplete && (
+            {isSpectator && !isComplete && (
+              <span className="text-xs opacity-70">(Tylko podgląd)</span>
+            )}
+            {!canAct && !isComplete && !isSpectator && (
               <span className="text-xs opacity-70">(Czekaj na przeciwnika)</span>
             )}
           </div>
@@ -319,14 +335,16 @@ const MapVeto = () => {
           {maps.map((map) => (
             <Card
               key={map.id}
-              onClick={() => handleMapClick(map.id)}
+              onClick={() => !isSpectator && handleMapClick(map.id)}
               className={cn(
                 "relative overflow-hidden transition-all duration-300 group",
-                map.status === 'available' && !isComplete && canAct
-                  ? "cursor-pointer hover:scale-105 hover:ring-2 hover:ring-primary"
-                  : map.status === 'available' && !canAct
-                    ? "cursor-not-allowed opacity-50"
-                    : "opacity-75",
+                isSpectator 
+                  ? "cursor-default"
+                  : map.status === 'available' && !isComplete && canAct
+                    ? "cursor-pointer hover:scale-105 hover:ring-2 hover:ring-primary"
+                    : map.status === 'available' && !canAct
+                      ? "cursor-not-allowed opacity-50"
+                      : "opacity-75",
                 map.status === 'banned_team1' || map.status === 'banned_team2'
                   ? "grayscale"
                   : "",
@@ -380,6 +398,52 @@ const MapVeto = () => {
             </Card>
           ))}
         </div>
+
+        {/* Veto History Log */}
+        {sessionCode && vetoHistory.length > 0 && (
+          <div className="bg-card/50 border border-border rounded-2xl p-6 mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-semibold">Historia wyboru map</h3>
+            </div>
+            <div className="space-y-2">
+              {vetoHistory.map((entry, index) => (
+                <div 
+                  key={index}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2 rounded-lg text-sm",
+                    entry.action === 'ban' 
+                      ? "bg-red-500/10 border border-red-500/20" 
+                      : entry.action === 'decider'
+                        ? "bg-amber-500/10 border border-amber-500/20"
+                        : "bg-emerald-500/10 border border-emerald-500/20"
+                  )}
+                >
+                  <span className="font-mono text-xs text-muted-foreground w-6">#{index + 1}</span>
+                  <div className={cn(
+                    "w-3 h-3 rounded-full",
+                    entry.team === 1 ? "bg-blue-500" : entry.team === 2 ? "bg-orange-500" : "bg-amber-500"
+                  )} />
+                  <span className="font-medium">
+                    {entry.team === 1 ? team1Name : entry.team === 2 ? team2Name : 'Decider'}
+                  </span>
+                  <Badge variant="outline" className={cn(
+                    "text-xs",
+                    entry.action === 'ban' ? "text-red-400 border-red-400/50" : 
+                    entry.action === 'decider' ? "text-amber-400 border-amber-400/50" :
+                    "text-emerald-400 border-emerald-400/50"
+                  )}>
+                    {entry.action === 'ban' ? 'BAN' : entry.action === 'pick' ? 'PICK' : 'DECIDER'}
+                  </Badge>
+                  <span className="text-foreground font-semibold">{entry.mapName}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {new Date(entry.timestamp).toLocaleTimeString('pl-PL')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Final Result */}
         {isComplete && (
