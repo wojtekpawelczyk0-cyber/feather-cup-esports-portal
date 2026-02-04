@@ -224,6 +224,7 @@ const SwissBracket = () => {
         .select('*')
         .not('swiss_round', 'is', null)
         .order('swiss_round')
+        .order('swiss_order')
         .order('scheduled_at');
 
       if (matchesError) throw matchesError;
