@@ -117,6 +117,14 @@ const AdminMatches = () => {
 
     setSaving(true);
     try {
+      const winnerId = (() => {
+        if (formData.status !== 'finished') return null;
+        if (!formData.team1_id || !formData.team2_id) return null;
+        if (formData.team1_score > formData.team2_score) return formData.team1_id;
+        if (formData.team2_score > formData.team1_score) return formData.team2_id;
+        return null; // remis / nie rozstrzygnięto
+      })();
+
       const matchData = {
         team1_id: formData.team1_id,
         team2_id: formData.team2_id,
@@ -126,6 +134,7 @@ const AdminMatches = () => {
         status: formData.status,
         team1_score: formData.team1_score,
         team2_score: formData.team2_score,
+        winner_id: winnerId,
       };
 
       if (editingMatch) {
