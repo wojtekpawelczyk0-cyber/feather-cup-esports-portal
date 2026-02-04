@@ -12,6 +12,7 @@ interface Team {
 interface SwissMatch {
   id: string;
   swiss_round: number;
+  swiss_group: string | null;
   team1_id: string | null;
   team2_id: string | null;
   team1_score: number | null;
@@ -21,6 +22,10 @@ interface SwissMatch {
   scheduled_at: string;
   team1?: Team | null;
   team2?: Team | null;
+}
+
+interface SwissBracketProps {
+  group: 'A' | 'B';
 }
 
 // Horizontal match card like RLCS style
@@ -205,17 +210,16 @@ const MatchColumn = ({
   </div>
 );
 
-const SwissBracket = () => {
+const SwissBracket = ({ group }: SwissBracketProps) => {
   const [matches, setMatches] = useState<SwissMatch[]>([]);
   const [teams, setTeams] = useState<Map<string, Team>>(new Map());
   const [loading, setLoading] = useState(true);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [lines, setLines] = useState<{ x1: number; y1: number; x2: number; y2: number; }[]>([]);
 
   useEffect(() => {
     fetchMatches();
-  }, []);
+  }, [group]);
 
   const fetchMatches = async () => {
     try {
@@ -223,6 +227,7 @@ const SwissBracket = () => {
         .from('matches')
         .select('*')
         .not('swiss_round', 'is', null)
+        .eq('swiss_group', group)
         .order('swiss_round')
         .order('swiss_order')
         .order('scheduled_at');
@@ -286,41 +291,46 @@ const SwissBracket = () => {
   const qualifiedTeams = Object.entries(records).filter(([_, r]) => r.wins >= 3).map(([_, r]) => r.team);
   const eliminatedTeams = Object.entries(records).filter(([_, r]) => r.losses >= 3).map(([_, r]) => r.team);
 
-  // Group matches by swiss round (for 32 teams)
-  const round1 = getMatchesByRound(1); // 16 matches (0-0)
-  const round2 = getMatchesByRound(2); // 16 matches total
-  const round3 = getMatchesByRound(3); // 16 matches total
-  const round4 = getMatchesByRound(4); // 8 matches total
-  const round5 = getMatchesByRound(5); // 8 matches total
+  // Group matches by swiss round (for 16 teams per group)
+  // Round 1: 8 matches (0-0)
+  // Round 2: 4 matches (1-0) + 4 matches (0-1)
+  // Round 3: 2 matches (2-0) + 4 matches (1-1) + 2 matches (0-2)
+  // Round 4: 3 matches (2-1) + 3 matches (1-2)
+  // Round 5: 3 matches (2-2)
+  const round1 = getMatchesByRound(1); // 8 matches (0-0)
+  const round2 = getMatchesByRound(2); // 8 matches total
+  const round3 = getMatchesByRound(3); // 8 matches total
+  const round4 = getMatchesByRound(4); // 6 matches total
+  const round5 = getMatchesByRound(5); // 3 matches total
 
-  // Split round 2 into 1-0 and 0-1 (8 each for 32 teams)
-  const round2_10 = round2.slice(0, 8);
-  const round2_01 = round2.slice(8, 16);
+  // Split round 2 into 1-0 and 0-1 (4 each)
+  const round2_10 = round2.slice(0, 4);
+  const round2_01 = round2.slice(4, 8);
   
-  // Split round 3 into 2-0, 1-1, 0-2 (4, 8, 4 for 32 teams)
-  const round3_20 = round3.slice(0, 4);
-  const round3_11 = round3.slice(4, 12);
-  const round3_02 = round3.slice(12, 16);
+  // Split round 3 into 2-0, 1-1, 0-2 (2, 4, 2)
+  const round3_20 = round3.slice(0, 2);
+  const round3_11 = round3.slice(2, 6);
+  const round3_02 = round3.slice(6, 8);
   
-  // Split round 4 into 2-1 and 1-2 (4 each for 32 teams)
-  const round4_21 = round4.slice(0, 4);
-  const round4_12 = round4.slice(4, 8);
+  // Split round 4 into 2-1 and 1-2 (3 each)
+  const round4_21 = round4.slice(0, 3);
+  const round4_12 = round4.slice(3, 6);
 
-  // Round 5 is 2-2 (8 matches for 32 teams)
+  // Round 5 is 2-2 (3 matches)
   const round5_22 = round5;
 
   // Teams that went 3-0, 3-1, 3-2 (qualified) and 0-3, 1-3, 2-3 (eliminated)
-  const teams30 = getTeamsByRecord(3, 0); // 4 teams
-  const teams31 = getTeamsByRecord(3, 1); // 4 teams
-  const teams32 = getTeamsByRecord(3, 2); // 8 teams
-  const teams03 = getTeamsByRecord(0, 3); // 4 teams
-  const teams13 = getTeamsByRecord(1, 3); // 4 teams
-  const teams23 = getTeamsByRecord(2, 3); // 8 teams
+  const teams30 = getTeamsByRecord(3, 0); // 2 teams
+  const teams31 = getTeamsByRecord(3, 1); // 3 teams
+  const teams32 = getTeamsByRecord(3, 2); // 3 teams
+  const teams03 = getTeamsByRecord(0, 3); // 2 teams
+  const teams13 = getTeamsByRecord(1, 3); // 3 teams
+  const teams23 = getTeamsByRecord(2, 3); // 3 teams
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-muted-foreground">Ładowanie drabinki szwajcarskiej...</div>
+        <div className="text-muted-foreground">Ładowanie drabinki grupy {group}...</div>
       </div>
     );
   }
@@ -329,8 +339,8 @@ const SwissBracket = () => {
     return (
       <div className="text-center py-12">
         <Trophy className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-        <p className="text-muted-foreground">Faza szwajcarska nie została jeszcze rozpoczęta.</p>
-        <p className="text-sm text-muted-foreground/70 mt-2">Administratorzy mogą wygenerować rundy w panelu admina.</p>
+        <p className="text-muted-foreground">Grupa {group} nie została jeszcze rozpoczęta.</p>
+        <p className="text-sm text-muted-foreground/70 mt-2">Administratorzy mogą dodać mecze w panelu admina.</p>
       </div>
     );
   }
@@ -346,9 +356,9 @@ const SwissBracket = () => {
         {/* Title */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-black text-white tracking-wider mb-1">
-            SWISS BRACKET
+            GRUPA {group}
           </h2>
-          <p className="text-sm text-muted-foreground">System szwajcarski</p>
+          <p className="text-sm text-muted-foreground">System szwajcarski - 16 drużyn</p>
         </div>
 
         {/* Swiss bracket grid with connections */}
@@ -365,7 +375,6 @@ const SwissBracket = () => {
                 <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.3" />
               </linearGradient>
             </defs>
-            {/* Lines will be drawn here dynamically if needed */}
           </svg>
 
           {/* Bracket grid */}
@@ -410,7 +419,7 @@ const SwissBracket = () => {
             {/* Column 4: 3-0 Qualified, 2-1, 1-2, 0-3 Eliminated */}
             <div className="flex flex-col gap-4">
               <MatchColumn 
-                header="QUALIFIED" 
+                header="AWANS" 
                 headerType="qualified"
                 isResult
                 resultType="qualified"
@@ -419,7 +428,7 @@ const SwissBracket = () => {
               <MatchColumn header="2 - 1" matches={round4_21} />
               <MatchColumn header="1 - 2" matches={round4_12} />
               <MatchColumn 
-                header="ELIMINATED" 
+                header="ODPADA" 
                 headerType="eliminated"
                 isResult
                 resultType="eliminated"
@@ -435,7 +444,7 @@ const SwissBracket = () => {
             {/* Column 5: 3-1 Qualified, 2-2, 1-3 Eliminated */}
             <div className="flex flex-col gap-4">
               <MatchColumn 
-                header="QUALIFIED" 
+                header="AWANS" 
                 headerType="qualified"
                 isResult
                 resultType="qualified"
@@ -443,7 +452,7 @@ const SwissBracket = () => {
               />
               <MatchColumn header="2 - 2" matches={round5_22} />
               <MatchColumn 
-                header="ELIMINATED" 
+                header="ODPADA" 
                 headerType="eliminated"
                 isResult
                 resultType="eliminated"
@@ -459,14 +468,14 @@ const SwissBracket = () => {
             {/* Column 6: 3-2 Qualified, 2-3 Eliminated */}
             <div className="flex flex-col gap-4">
               <MatchColumn 
-                header="QUALIFIED" 
+                header="AWANS" 
                 headerType="qualified"
                 isResult
                 resultType="qualified"
                 teams={teams32}
               />
               <MatchColumn 
-                header="ELIMINATED" 
+                header="ODPADA" 
                 headerType="eliminated"
                 isResult
                 resultType="eliminated"
@@ -498,14 +507,14 @@ const SwissBracket = () => {
             <Trophy className="w-6 h-6 text-emerald-500" />
             <div>
               <div className="text-xs text-muted-foreground">Awansowało</div>
-              <div className="text-xl font-bold text-emerald-500">{qualifiedTeams.length}/16</div>
+              <div className="text-xl font-bold text-white">{qualifiedTeams.length}</div>
             </div>
           </div>
           <div className="bg-[#1a2744] px-6 py-3 rounded-lg flex items-center gap-3 border border-[#2a3a5a]">
-            <div className="w-6 h-6 text-red-500 flex items-center justify-center font-bold">✕</div>
+            <Trophy className="w-6 h-6 text-red-500" />
             <div>
               <div className="text-xs text-muted-foreground">Odpadło</div>
-              <div className="text-xl font-bold text-red-500">{eliminatedTeams.length}/16</div>
+              <div className="text-xl font-bold text-white">{eliminatedTeams.length}</div>
             </div>
           </div>
         </div>

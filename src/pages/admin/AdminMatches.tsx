@@ -26,6 +26,7 @@ interface Match {
   round: string | null;
   swiss_round: number | null;
   swiss_order: number | null;
+  swiss_group: string | null;
   team1?: { name: string } | null;
   team2?: { name: string } | null;
 }
@@ -45,6 +46,7 @@ const AdminMatches = () => {
     round: '',
     swiss_round: '',
     swiss_order: 0,
+    swiss_group: '' as string,
     status: 'scheduled' as MatchStatus,
     team1_score: 0,
     team2_score: 0,
@@ -92,6 +94,7 @@ const AdminMatches = () => {
         round: match.round || '',
         swiss_round: match.swiss_round?.toString() || '',
         swiss_order: match.swiss_order || 0,
+        swiss_group: match.swiss_group || '',
         status: match.status,
         team1_score: match.team1_score,
         team2_score: match.team2_score,
@@ -105,6 +108,7 @@ const AdminMatches = () => {
         round: '',
         swiss_round: '',
         swiss_order: 0,
+        swiss_group: '',
         status: 'scheduled',
         team1_score: 0,
         team2_score: 0,
@@ -136,6 +140,7 @@ const AdminMatches = () => {
         round: formData.round || null,
         swiss_round: formData.swiss_round ? parseInt(formData.swiss_round) : null,
         swiss_order: formData.swiss_order,
+        swiss_group: formData.swiss_group || null,
         status: formData.status,
         team1_score: formData.team1_score,
         team2_score: formData.team2_score,
@@ -249,7 +254,21 @@ const AdminMatches = () => {
                   onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Grupa Swiss</Label>
+                  <Select
+                    value={formData.swiss_group || 'none'}
+                    onValueChange={(v) => setFormData({ ...formData, swiss_group: v === 'none' ? '' : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Wybierz grupę..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Brak (nie Swiss)</SelectItem>
+                      <SelectItem value="A">Grupa A</SelectItem>
+                      <SelectItem value="B">Grupa B</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>Kolejka Swiss</Label>
                   <Select
@@ -268,13 +287,13 @@ const AdminMatches = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Kolejność meczu (Swiss)</Label>
+                  <Label>Kolejność meczu</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.swiss_order}
                     onChange={(e) => setFormData({ ...formData, swiss_order: parseInt(e.target.value) || 0 })}
-                    placeholder="0 = domyślnie, niższe = wyżej"
+                    placeholder="0 = domyślnie"
                   />
                 </div>
               </div>
