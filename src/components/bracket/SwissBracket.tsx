@@ -35,8 +35,21 @@ const SwissMatchCard = ({
 }) => {
   const isFinished = match.status === 'finished';
   const isLive = match.status === 'live';
-  const team1Won = isFinished && match.winner_id === match.team1_id;
-  const team2Won = isFinished && match.winner_id === match.team2_id;
+
+  // Some admin flows were saving finished matches with scores but without winner_id.
+  // For UI coloring we can safely infer the winner from the score as a fallback.
+  const inferredWinnerId = (() => {
+    if (match.winner_id) return match.winner_id;
+    if (!isFinished) return null;
+    if (match.team1_score == null || match.team2_score == null) return null;
+    if (!match.team1_id || !match.team2_id) return null;
+    if (match.team1_score > match.team2_score) return match.team1_id;
+    if (match.team2_score > match.team1_score) return match.team2_id;
+    return null; // draw / not decided
+  })();
+
+  const team1Won = isFinished && inferredWinnerId === match.team1_id;
+  const team2Won = isFinished && inferredWinnerId === match.team2_id;
 
   return (
     <div 
