@@ -239,12 +239,12 @@ const AdminMatches = () => {
                 <div className="space-y-2">
                   <Label>Kolejka Swiss</Label>
                   <Select
-                    value={formData.swiss_round}
-                    onValueChange={(v) => setFormData({ ...formData, swiss_round: v })}
+                    value={formData.swiss_round || 'none'}
+                    onValueChange={(v) => setFormData({ ...formData, swiss_round: v === 'none' ? '' : v })}
                   >
                     <SelectTrigger><SelectValue placeholder="Wybierz kolejkę..." /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Brak (nie Swiss)</SelectItem>
+                      <SelectItem value="none">Brak (nie Swiss)</SelectItem>
                       <SelectItem value="1">Kolejka 1</SelectItem>
                       <SelectItem value="2">Kolejka 2</SelectItem>
                       <SelectItem value="3">Kolejka 3</SelectItem>
