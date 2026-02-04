@@ -134,6 +134,7 @@ export type Database = {
           scheduled_at: string
           status: Database["public"]["Enums"]["match_status"]
           stream_url: string | null
+          swiss_group: string | null
           swiss_order: number | null
           swiss_round: number | null
           team1_id: string | null
@@ -156,6 +157,7 @@ export type Database = {
           scheduled_at: string
           status?: Database["public"]["Enums"]["match_status"]
           stream_url?: string | null
+          swiss_group?: string | null
           swiss_order?: number | null
           swiss_round?: number | null
           team1_id?: string | null
@@ -178,6 +180,7 @@ export type Database = {
           scheduled_at?: string
           status?: Database["public"]["Enums"]["match_status"]
           stream_url?: string | null
+          swiss_group?: string | null
           swiss_order?: number | null
           swiss_round?: number | null
           team1_id?: string | null
