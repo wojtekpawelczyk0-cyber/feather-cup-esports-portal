@@ -25,6 +25,7 @@ interface Match {
   status: MatchStatus;
   round: string | null;
   swiss_round: number | null;
+  swiss_order: number | null;
   team1?: { name: string } | null;
   team2?: { name: string } | null;
 }
@@ -43,6 +44,7 @@ const AdminMatches = () => {
     scheduled_at: '',
     round: '',
     swiss_round: '',
+    swiss_order: 0,
     status: 'scheduled' as MatchStatus,
     team1_score: 0,
     team2_score: 0,
@@ -89,6 +91,7 @@ const AdminMatches = () => {
         scheduled_at: match.scheduled_at.slice(0, 16),
         round: match.round || '',
         swiss_round: match.swiss_round?.toString() || '',
+        swiss_order: match.swiss_order || 0,
         status: match.status,
         team1_score: match.team1_score,
         team2_score: match.team2_score,
@@ -101,6 +104,7 @@ const AdminMatches = () => {
         scheduled_at: '',
         round: '',
         swiss_round: '',
+        swiss_order: 0,
         status: 'scheduled',
         team1_score: 0,
         team2_score: 0,
@@ -131,6 +135,7 @@ const AdminMatches = () => {
         scheduled_at: formData.scheduled_at,
         round: formData.round || null,
         swiss_round: formData.swiss_round ? parseInt(formData.swiss_round) : null,
+        swiss_order: formData.swiss_order,
         status: formData.status,
         team1_score: formData.team1_score,
         team2_score: formData.team2_score,
@@ -262,6 +267,18 @@ const AdminMatches = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Kolejność meczu (Swiss)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.swiss_order}
+                    onChange={(e) => setFormData({ ...formData, swiss_order: parseInt(e.target.value) || 0 })}
+                    placeholder="0 = domyślnie, niższe = wyżej"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Runda (opis)</Label>
                   <Input
