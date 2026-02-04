@@ -24,6 +24,7 @@ interface Match {
   scheduled_at: string;
   status: MatchStatus;
   round: string | null;
+  swiss_round: number | null;
   team1?: { name: string } | null;
   team2?: { name: string } | null;
 }
@@ -41,6 +42,7 @@ const AdminMatches = () => {
     team2_id: '',
     scheduled_at: '',
     round: '',
+    swiss_round: '',
     status: 'scheduled' as MatchStatus,
     team1_score: 0,
     team2_score: 0,
@@ -86,6 +88,7 @@ const AdminMatches = () => {
         team2_id: match.team2_id || '',
         scheduled_at: match.scheduled_at.slice(0, 16),
         round: match.round || '',
+        swiss_round: match.swiss_round?.toString() || '',
         status: match.status,
         team1_score: match.team1_score,
         team2_score: match.team2_score,
@@ -97,6 +100,7 @@ const AdminMatches = () => {
         team2_id: '',
         scheduled_at: '',
         round: '',
+        swiss_round: '',
         status: 'scheduled',
         team1_score: 0,
         team2_score: 0,
@@ -118,6 +122,7 @@ const AdminMatches = () => {
         team2_id: formData.team2_id,
         scheduled_at: formData.scheduled_at,
         round: formData.round || null,
+        swiss_round: formData.swiss_round ? parseInt(formData.swiss_round) : null,
         status: formData.status,
         team1_score: formData.team1_score,
         team2_score: formData.team2_score,
@@ -232,7 +237,24 @@ const AdminMatches = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Runda</Label>
+                  <Label>Kolejka Swiss</Label>
+                  <Select
+                    value={formData.swiss_round}
+                    onValueChange={(v) => setFormData({ ...formData, swiss_round: v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Wybierz kolejkę..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Brak (nie Swiss)</SelectItem>
+                      <SelectItem value="1">Kolejka 1</SelectItem>
+                      <SelectItem value="2">Kolejka 2</SelectItem>
+                      <SelectItem value="3">Kolejka 3</SelectItem>
+                      <SelectItem value="4">Kolejka 4</SelectItem>
+                      <SelectItem value="5">Kolejka 5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Runda (opis)</Label>
                   <Input
                     value={formData.round}
                     onChange={(e) => setFormData({ ...formData, round: e.target.value })}

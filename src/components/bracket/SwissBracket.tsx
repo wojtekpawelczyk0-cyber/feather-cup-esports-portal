@@ -50,8 +50,8 @@ const SwissMatchCard = ({
       {/* Team 1 */}
       <div className={cn(
         "flex items-center justify-center gap-1 px-2 py-2 min-w-[70px]",
-        team1Won && "bg-primary/20",
-        isFinished && !team1Won && "opacity-50"
+        isFinished && team1Won && "bg-emerald-500/20",
+        isFinished && !team1Won && "bg-red-500/20"
       )}>
         {match.team1?.logo_url ? (
           <img src={match.team1.logo_url} alt="" className="w-8 h-8 object-contain" />
@@ -70,8 +70,8 @@ const SwissMatchCard = ({
       {/* Team 2 */}
       <div className={cn(
         "flex items-center justify-center gap-1 px-2 py-2 min-w-[70px]",
-        team2Won && "bg-primary/20",
-        isFinished && !team2Won && "opacity-50"
+        isFinished && team2Won && "bg-emerald-500/20",
+        isFinished && !team2Won && "bg-red-500/20"
       )}>
         {match.team2?.logo_url ? (
           <img src={match.team2.logo_url} alt="" className="w-8 h-8 object-contain" />
