@@ -363,7 +363,7 @@ const SwissBracket = () => {
 
             {/* Connector lines visual placeholder */}
             <div className="flex flex-col justify-around self-stretch py-8">
-              {[...Array(Math.max(round1.length / 2, 1))].map((_, i) => (
+              {[...Array(Math.max(Math.floor(round1.length / 2), 1))].map((_, i) => (
                 <div key={i} className="w-8 flex flex-col items-center justify-center gap-1">
                   <div className="w-full h-px bg-gradient-to-r from-blue-500/50 to-blue-500/20" />
                 </div>
