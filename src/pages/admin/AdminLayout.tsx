@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-type AppRole = 'owner' | 'admin' | 'commentator' | 'support';
+type AppRole = 'owner' | 'admin' | 'commentator' | 'support' | 'map_veto';
 
 interface UserRole {
   role: AppRole;
@@ -25,7 +25,7 @@ const adminLinks = [
   { name: 'Sponsorzy', path: '/admin/sponsorzy', icon: Image, roles: ['owner', 'admin'] },
   { name: 'Użytkownicy', path: '/admin/uzytkownicy', icon: Shield, roles: ['owner'] },
   { name: 'Strony', path: '/admin/strony', icon: FileText, roles: ['owner'] },
-  { name: 'Map Veto', path: '/admin/map-veto', icon: Swords, roles: ['owner'] },
+  { name: 'Map Veto', path: '/admin/map-veto', icon: Swords, roles: ['owner', 'map_veto'] },
   { name: 'Ustawienia', path: '/admin/ustawienia', icon: Settings, roles: ['owner'] },
 ];
 
@@ -79,6 +79,7 @@ const AdminLayout = () => {
     if (userRoles.includes('owner')) return { label: 'Owner', color: 'bg-red-500/20 text-red-400' };
     if (userRoles.includes('admin')) return { label: 'Admin', color: 'bg-orange-500/20 text-orange-400' };
     if (userRoles.includes('commentator')) return { label: 'Komentator', color: 'bg-blue-500/20 text-blue-400' };
+    if (userRoles.includes('map_veto')) return { label: 'Map Veto', color: 'bg-purple-500/20 text-purple-400' };
     if (userRoles.includes('support')) return { label: 'Support', color: 'bg-green-500/20 text-green-400' };
     return null;
   };

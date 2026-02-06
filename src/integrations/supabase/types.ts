@@ -544,7 +544,7 @@ export type Database = {
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "owner" | "admin" | "commentator" | "support"
+      app_role: "owner" | "admin" | "commentator" | "support" | "map_veto"
       map_veto_action_type: "ban" | "pick" | "decider" | "random"
       match_status: "scheduled" | "live" | "finished" | "cancelled"
       member_role: "player" | "reserve" | "coach"
@@ -676,7 +676,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "commentator", "support"],
+      app_role: ["owner", "admin", "commentator", "support", "map_veto"],
       map_veto_action_type: ["ban", "pick", "decider", "random"],
       match_status: ["scheduled", "live", "finished", "cancelled"],
       member_role: ["player", "reserve", "coach"],
