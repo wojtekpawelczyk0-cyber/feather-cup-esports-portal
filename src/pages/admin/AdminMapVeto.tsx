@@ -53,14 +53,14 @@ const AdminMapVeto = () => {
   const [selectedTeam2, setSelectedTeam2] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<'bo1' | 'bo3'>('bo3');
 
-  const isOwner = userRoles.includes('owner');
+  const hasAccess = userRoles.includes('owner') || userRoles.includes('map_veto' as AppRole);
 
   useEffect(() => {
-    if (isOwner) {
+    if (hasAccess) {
       fetchSessions();
       fetchTeams();
     }
-  }, [isOwner]);
+  }, [hasAccess]);
 
   const fetchTeams = async () => {
     try {
@@ -273,11 +273,11 @@ const AdminMapVeto = () => {
     }
   };
 
-  if (!isOwner) {
+  if (!hasAccess) {
     return (
       <div className="p-8">
         <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-6 text-center">
-          <p className="text-destructive">Tylko właściciel ma dostęp do tej funkcji.</p>
+          <p className="text-destructive">Brak dostępu do tej funkcji. Wymaga roli Owner lub Map Veto.</p>
         </div>
       </div>
     );
