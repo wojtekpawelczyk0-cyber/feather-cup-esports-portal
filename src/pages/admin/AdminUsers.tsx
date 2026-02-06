@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-type AppRole = 'owner' | 'admin' | 'commentator' | 'support';
+type AppRole = 'owner' | 'admin' | 'commentator' | 'support' | 'map_veto';
 
 interface UserWithRole {
   id: string;
@@ -46,6 +46,7 @@ const roleLabels: Record<AppRole, { label: string; color: string }> = {
   admin: { label: 'Admin', color: 'bg-orange-500/20 text-orange-400' },
   commentator: { label: 'Komentator', color: 'bg-blue-500/20 text-blue-400' },
   support: { label: 'Support', color: 'bg-green-500/20 text-green-400' },
+  map_veto: { label: 'Map Veto', color: 'bg-purple-500/20 text-purple-400' },
 };
 
 const AdminUsers = () => {
@@ -480,6 +481,7 @@ const AdminUsers = () => {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="commentator">Komentator</SelectItem>
                         <SelectItem value="support">Support</SelectItem>
+                        <SelectItem value="map_veto">Map Veto</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
