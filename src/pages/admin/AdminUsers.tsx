@@ -565,7 +565,7 @@ const AdminUsers = () => {
                 return groupedUsers.map((user) => {
                   // Find roles this user doesn't have yet
                   const existingRoles = user.roles.map(r => r.role);
-                  const availableRoles = (['owner', 'admin', 'commentator', 'support'] as AppRole[])
+                  const availableRoles = (['owner', 'admin', 'commentator', 'support', 'map_veto'] as AppRole[])
                     .filter(r => !existingRoles.includes(r));
 
                   return (
