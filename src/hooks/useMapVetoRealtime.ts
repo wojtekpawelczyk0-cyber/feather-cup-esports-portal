@@ -537,13 +537,14 @@ export const useMapVetoRealtime = ({ sessionCode, userTeam, hasAccess, format: i
         }
       }
 
-      // Update session state
+      // Update session state with new step_started_at for timer sync
       const { error } = await supabase
         .from('map_veto_sessions')
         .update({
           current_step: newStep,
           maps_state: mapsState,
           is_complete: completed,
+          step_started_at: completed ? null : new Date().toISOString(),
         })
         .eq('id', sessionId);
 

@@ -70,7 +70,7 @@ export const RandomMapAnimation = ({ maps, onComplete, isActive }: RandomMapAnim
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white mb-6 animate-pulse">
-          ⏱️ Czas minął! Losowanie mapy...
+          ⏱️ Czas minął! Losowanie mapy do zbanowania...
         </h2>
         
         {/* Spinning carousel */}
