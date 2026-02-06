@@ -59,6 +59,20 @@ export const useDynamicSEO = () => {
         document.head.appendChild(shortcutIcon);
       }
       shortcutIcon.href = settings.favicon_url;
+
+      // Update apple-touch-icon for iOS devices
+      const appleTouchIcons = document.querySelectorAll('link[rel="apple-touch-icon"]');
+      appleTouchIcons.forEach((icon) => {
+        (icon as HTMLLinkElement).href = settings.favicon_url;
+      });
+
+      // If no apple-touch-icon exists, create one
+      if (appleTouchIcons.length === 0) {
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = settings.favicon_url;
+        document.head.appendChild(appleIcon);
+      }
     }
   }, [settings, loading]);
 
