@@ -32,6 +32,7 @@ import AdminPages from "./pages/admin/AdminPages";
 import AdminSwiss from "./pages/admin/AdminSwiss";
 import AdminMapVeto from "./pages/admin/AdminMapVeto";
 import CommentatorPanel from "./pages/admin/CommentatorPanel";
+import AppLogin from "./pages/AppLogin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/faq" element={<StaticPage />} />
               <Route path="/wsparcie" element={<StaticPage />} />
               {/* Admin Routes */}
+              <Route path="/aplikacja/logowanie" element={<AppLogin />} />
               <Route path="/turniej/wybieranie_map" element={<MapVeto />} />
               <Route path="/losowanie" element={<TeamDraw />} />
               <Route path="/admin" element={<AdminLayout />}>
