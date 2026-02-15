@@ -43,6 +43,7 @@ const AdminMatches = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [finishedOpen, setFinishedOpen] = useState(false);
+  const [commentatorNames, setCommentatorNames] = useState<Map<string, string>>(new Map());
   const [formData, setFormData] = useState({
     team1_id: '',
     team2_id: '',
@@ -80,6 +81,21 @@ const AdminMatches = () => {
 
       setMatches(matchesWithTeams as Match[]);
       setTeams((teamsRes.data || []) as Team[]);
+
+      // Fetch commentator profiles
+      const commentatorIds = new Set<string>();
+      (matchesRes.data || []).forEach((m: any) => {
+        if (m.commentator1_id) commentatorIds.add(m.commentator1_id);
+        if (m.commentator2_id) commentatorIds.add(m.commentator2_id);
+      });
+      if (commentatorIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', Array.from(commentatorIds));
+        const namesMap = new Map((profiles || []).map((p: any) => [p.user_id, p.display_name || 'Komentator']));
+        setCommentatorNames(namesMap);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -265,7 +281,7 @@ const AdminMatches = () => {
               title="Wypisz komentatora 1"
             >
               <UserMinus className="w-3 h-3" />
-              K1
+              {commentatorNames.get(match.commentator1_id) || 'K1'}
             </Button>
           )}
           {match.commentator2_id && (
@@ -277,7 +293,7 @@ const AdminMatches = () => {
               title="Wypisz komentatora 2"
             >
               <UserMinus className="w-3 h-3" />
-              K2
+              {commentatorNames.get(match.commentator2_id) || 'K2'}
             </Button>
           )}
         </div>
