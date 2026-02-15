@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Mic, MicOff, Play, Save, Trophy, BarChart3 } from 'lucide-react';
+import { Loader2, Mic, MicOff, Play, Save, Trophy, BarChart3, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -335,6 +335,11 @@ const CommentatorPanel = () => {
     return profile?.display_name || 'Komentator';
   };
 
+  const copyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    toast({ title: 'ID skopiowane', description: id });
+  };
+
   const isMyMatch = (match: Match) => {
     return match.commentator1_id === user?.id || match.commentator2_id === user?.id;
   };
@@ -519,6 +524,15 @@ const CommentatorPanel = () => {
             <div key={match.id} className="glass-card p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
+                  {/* Match ID */}
+                  <button
+                    onClick={() => copyId(match.id)}
+                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground font-mono opacity-60 hover:opacity-100 transition-opacity"
+                    title="Kopiuj ID meczu"
+                  >
+                    <Copy className="w-3 h-3" />
+                    {match.id.slice(0, 8)}
+                  </button>
                   {/* Teams */}
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
