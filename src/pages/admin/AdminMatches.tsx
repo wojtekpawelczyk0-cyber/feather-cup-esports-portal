@@ -137,7 +137,7 @@ const AdminMatches = () => {
   };
 
   const saveMatch = async () => {
-    if (!formData.team1_id || !formData.team2_id || !formData.scheduled_at) {
+    if (!formData.team1_id || !formData.team2_id) {
       toast({ title: 'Wypełnij wszystkie wymagane pola', variant: 'destructive' });
       return;
     }
@@ -155,7 +155,7 @@ const AdminMatches = () => {
       const matchData = {
         team1_id: formData.team1_id,
         team2_id: formData.team2_id,
-        scheduled_at: formData.scheduled_at,
+        scheduled_at: formData.scheduled_at || null,
         round: formData.round || null,
         swiss_round: formData.swiss_round ? parseInt(formData.swiss_round) : null,
         swiss_order: formData.swiss_order,
@@ -249,12 +249,16 @@ const AdminMatches = () => {
         </div>
       </td>
       <td className="p-4">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Calendar className="w-4 h-4" />
-          {new Date(match.scheduled_at).toLocaleDateString('pl-PL')}
-          <Clock className="w-4 h-4 ml-2" />
-          {new Date(match.scheduled_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
-        </div>
+        {match.scheduled_at ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Calendar className="w-4 h-4" />
+            {new Date(match.scheduled_at).toLocaleDateString('pl-PL')}
+            <Clock className="w-4 h-4 ml-2" />
+            {new Date(match.scheduled_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm italic">Brak terminu</span>
+        )}
       </td>
       <td className="p-4 text-muted-foreground">{match.round || '-'}</td>
       <td className="p-4">
