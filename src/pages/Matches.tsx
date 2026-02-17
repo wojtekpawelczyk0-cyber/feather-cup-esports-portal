@@ -33,7 +33,7 @@ const Matches = () => {
         logo: match.team2?.logo_url || undefined,
         score: match.team2_score ?? undefined,
       },
-      date: date ? format(date, 'd MMM', { locale: dateLocale }) : t('matches.no_date') || 'Brak terminu',
+      date: date ? format(date, 'd MMM', { locale: dateLocale }) : 'Niezaplanowany',
       time: date ? format(date, 'HH:mm') : '-',
       status: match.status === 'scheduled' ? 'upcoming' as const : match.status === 'live' ? 'live' as const : 'finished' as const,
     };
