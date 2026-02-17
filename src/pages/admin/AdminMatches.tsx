@@ -109,7 +109,7 @@ const AdminMatches = () => {
       setFormData({
         team1_id: match.team1_id || '',
         team2_id: match.team2_id || '',
-        scheduled_at: match.scheduled_at.slice(0, 16),
+        scheduled_at: match.scheduled_at ? match.scheduled_at.slice(0, 16) : '',
         round: match.round || '',
         swiss_round: match.swiss_round?.toString() || '',
         swiss_order: match.swiss_order || 0,

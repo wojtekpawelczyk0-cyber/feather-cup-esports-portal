@@ -19,7 +19,8 @@ const Matches = () => {
   const dateLocale = language === 'pl' ? pl : enUS;
 
   const formatMatchForCard = (match: any) => {
-    const date = new Date(match.scheduled_at);
+    const hasDate = !!match.scheduled_at;
+    const date = hasDate ? new Date(match.scheduled_at) : null;
     return {
       id: match.id,
       team1: {
@@ -32,8 +33,8 @@ const Matches = () => {
         logo: match.team2?.logo_url || undefined,
         score: match.team2_score ?? undefined,
       },
-      date: format(date, 'd MMM', { locale: dateLocale }),
-      time: format(date, 'HH:mm'),
+      date: date ? format(date, 'd MMM', { locale: dateLocale }) : t('matches.no_date') || 'Brak terminu',
+      time: date ? format(date, 'HH:mm') : '-',
       status: match.status === 'scheduled' ? 'upcoming' as const : match.status === 'live' ? 'live' as const : 'finished' as const,
     };
   };
