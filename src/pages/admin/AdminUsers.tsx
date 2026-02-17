@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus, Ban, CheckCircle, History } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Loader2, Plus, Trash2, Shield, Key, Mail, UserPlus, Ban, CheckCircle, History, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +75,8 @@ const AdminUsers = () => {
   const [activeTab, setActiveTab] = useState<'roles' | 'users' | 'bans'>('roles');
   const [banHistory, setBanHistory] = useState<UserBan[]>([]);
   const [banProfiles, setBanProfiles] = useState<Map<string, string>>(new Map());
+  const [userSearch, setUserSearch] = useState('');
+  const [userProfiles, setUserProfiles] = useState<Map<string, { display_name: string | null; steam_id: string | null }>>(new Map());
 
   useEffect(() => {
     fetchUserRoles();
@@ -152,6 +154,20 @@ const AdminUsers = () => {
 
       if (error) throw error;
       setAllUsers(data.users || []);
+
+      // Fetch profiles with steam_id for search
+      const userIds = (data.users || []).map((u: any) => u.id);
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, steam_id')
+          .in('user_id', userIds);
+
+        const profilesMap = new Map(
+          (profiles || []).map((p: any) => [p.user_id, { display_name: p.display_name, steam_id: p.steam_id }])
+        );
+        setUserProfiles(profilesMap);
+      }
     } catch (error: any) {
       console.error('Error fetching users:', error);
     }
@@ -653,18 +669,54 @@ const AdminUsers = () => {
       )}
 
       {activeTab === 'users' && (
-        <div className="glass-card overflow-hidden">
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Szukaj po emailu, nicku lub Steam ID..."
+              className="pl-10"
+            />
+          </div>
+          <div className="glass-card overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left p-4 text-muted-foreground font-medium">Email</th>
+                <th className="text-left p-4 text-muted-foreground font-medium">Nick / Steam ID</th>
                 <th className="text-left p-4 text-muted-foreground font-medium">Ostatnie logowanie</th>
                 <th className="text-left p-4 text-muted-foreground font-medium">Data rejestracji</th>
                 <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
               </tr>
             </thead>
             <tbody>
-              {allUsers.map((user) => (
+              {(() => {
+                const query = userSearch.toLowerCase().trim();
+                const filtered = query
+                  ? allUsers.filter((user) => {
+                      const profile = userProfiles.get(user.id);
+                      return (
+                        user.email.toLowerCase().includes(query) ||
+                        (profile?.display_name?.toLowerCase().includes(query)) ||
+                        (profile?.steam_id?.toLowerCase().includes(query))
+                      );
+                    })
+                  : allUsers;
+
+                if (filtered.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={5} className="text-center text-muted-foreground py-12">
+                        {query ? 'Nie znaleziono użytkowników' : 'Brak użytkowników'}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return filtered.map((user) => {
+                  const profile = userProfiles.get(user.id);
+                  return (
                 <tr key={user.id} className="border-b border-border/50 hover:bg-secondary/20">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
@@ -674,6 +726,14 @@ const AdminUsers = () => {
                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive">
                           Zbanowany do {new Date(user.ban.banned_until).toLocaleDateString('pl-PL')}
                         </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex flex-col text-sm">
+                      <span className="text-foreground">{profile?.display_name || '-'}</span>
+                      {profile?.steam_id && (
+                        <span className="text-muted-foreground text-xs font-mono">{profile.steam_id}</span>
                       )}
                     </div>
                   </td>
@@ -734,12 +794,12 @@ const AdminUsers = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                  );
+                });
+              })()}
             </tbody>
           </table>
-          {allUsers.length === 0 && (
-            <p className="text-center text-muted-foreground py-12">Brak użytkowników</p>
-          )}
+          </div>
         </div>
       )}
 
