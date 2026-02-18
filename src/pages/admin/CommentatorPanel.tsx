@@ -8,6 +8,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MAP_NAMES, getMapThumbnail, getMapDisplayName } from '@/lib/mapThumbnails';
 
 interface Team {
   id: string;
@@ -54,6 +57,9 @@ const CommentatorPanel = () => {
   const [scores, setScores] = useState({ team1: 0, team2: 0 });
   const [commentatorStats, setCommentatorStats] = useState<CommentatorStats[]>([]);
   const [myStats, setMyStats] = useState<CommentatorStats | null>(null);
+  const [bo3DialogOpen, setBo3DialogOpen] = useState(false);
+  const [bo3MatchId, setBo3MatchId] = useState<string | null>(null);
+  const [bo3Maps, setBo3Maps] = useState({ pick1: '', pick2: '', decider: '' });
 
   useEffect(() => {
     fetchMatches();
@@ -265,6 +271,17 @@ const CommentatorPanel = () => {
   };
 
   const startMatch = async (matchId: string) => {
+    const match = upcomingMatches.find(m => m.id === matchId);
+    if (match && (match as any).bo_format === 'bo3') {
+      setBo3MatchId(matchId);
+      setBo3Maps({ pick1: '', pick2: '', decider: '' });
+      setBo3DialogOpen(true);
+      return;
+    }
+    await doStartMatch(matchId);
+  };
+
+  const doStartMatch = async (matchId: string) => {
     setSaving(true);
     try {
       const { error } = await supabase
@@ -278,6 +295,35 @@ const CommentatorPanel = () => {
     } catch (error: any) {
       toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
     } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmBo3Start = async () => {
+    if (!bo3MatchId || !bo3Maps.pick1 || !bo3Maps.pick2 || !bo3Maps.decider) {
+      toast({ title: 'Wybierz wszystkie 3 mapy', variant: 'destructive' });
+      return;
+    }
+    if (new Set([bo3Maps.pick1, bo3Maps.pick2, bo3Maps.decider]).size < 3) {
+      toast({ title: 'Mapy muszą być różne', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const maps = [
+        { match_id: bo3MatchId, map_name: bo3Maps.pick1, map_number: 1, status: 'pending' },
+        { match_id: bo3MatchId, map_name: bo3Maps.pick2, map_number: 2, status: 'pending' },
+        { match_id: bo3MatchId, map_name: bo3Maps.decider, map_number: 3, status: 'pending' },
+      ];
+
+      const { error: mapsError } = await supabase.from('match_maps').insert(maps);
+      if (mapsError) throw mapsError;
+
+      await doStartMatch(bo3MatchId);
+      setBo3DialogOpen(false);
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
       setSaving(false);
     }
   };
@@ -636,6 +682,48 @@ const CommentatorPanel = () => {
           )}
         </div>
       </div>
+
+      {/* BO3 Map Selection Dialog */}
+      <Dialog open={bo3DialogOpen} onOpenChange={setBo3DialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Wybierz mapy dla BO3</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {(['pick1', 'pick2', 'decider'] as const).map((key, i) => {
+              const label = i < 2 ? `Pick ${i + 1}` : 'Decider';
+              const selectedMap = bo3Maps[key];
+              return (
+                <div key={key} className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">{label}</label>
+                  <Select value={selectedMap} onValueChange={(v) => setBo3Maps({ ...bo3Maps, [key]: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz mapę..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MAP_NAMES.map((map) => (
+                        <SelectItem key={map} value={map} disabled={Object.values(bo3Maps).includes(map) && bo3Maps[key] !== map}>
+                          <div className="flex items-center gap-2">
+                            <img src={getMapThumbnail(map)} alt="" className="w-8 h-5 rounded object-cover" />
+                            <span>{getMapDisplayName(map)}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBo3DialogOpen(false)}>Anuluj</Button>
+            <Button onClick={confirmBo3Start} disabled={saving || !bo3Maps.pick1 || !bo3Maps.pick2 || !bo3Maps.decider}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+              Rozpocznij mecz
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
