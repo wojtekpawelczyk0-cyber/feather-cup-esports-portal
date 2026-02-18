@@ -10,6 +10,7 @@ import { useDynamicSEO } from "@/hooks/useDynamicSEO";
 import Index from "./pages/Index";
 import Matches from "./pages/Matches";
 import Results from "./pages/Results";
+import MatchDetailsPage from "./pages/MatchDetails";
 import Teams from "./pages/Teams";
 import TeamDetails from "./pages/TeamDetails";
 import Contact from "./pages/Contact";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/mecze" element={<Matches />} />
               <Route path="/wyniki" element={<Results />} />
+              <Route path="/wyniki/:id" element={<MatchDetailsPage />} />
               <Route path="/druzyny" element={<Teams />} />
               <Route path="/druzyny/:id" element={<TeamDetails />} />
               <Route path="/kontakt" element={<Contact />} />
