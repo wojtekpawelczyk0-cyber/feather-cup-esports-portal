@@ -55,6 +55,7 @@ const AdminMatches = () => {
     status: 'scheduled' as MatchStatus,
     team1_score: 0,
     team2_score: 0,
+    bo_format: 'bo1',
   });
 
   useEffect(() => {
@@ -117,6 +118,7 @@ const AdminMatches = () => {
         status: match.status,
         team1_score: match.team1_score,
         team2_score: match.team2_score,
+        bo_format: (match as any).bo_format || 'bo1',
       });
     } else {
       setEditingMatch(null);
@@ -131,6 +133,7 @@ const AdminMatches = () => {
         status: 'scheduled',
         team1_score: 0,
         team2_score: 0,
+        bo_format: 'bo1',
       });
     }
     setIsDialogOpen(true);
@@ -164,6 +167,7 @@ const AdminMatches = () => {
         team1_score: formData.team1_score,
         team2_score: formData.team2_score,
         winner_id: winnerId,
+        bo_format: formData.bo_format,
       };
 
       if (editingMatch) {
@@ -432,6 +436,21 @@ const AdminMatches = () => {
                     placeholder="np. Ćwierćfinał"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Format</Label>
+                  <Select
+                    value={formData.bo_format}
+                    onValueChange={(v) => setFormData({ ...formData, bo_format: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bo1">BO1</SelectItem>
+                      <SelectItem value="bo3">BO3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <Select

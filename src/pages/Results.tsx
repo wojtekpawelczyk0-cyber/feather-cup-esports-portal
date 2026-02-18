@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, Trophy } from 'lucide-react';
+import { Loader2, Trophy, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { pl, enUS } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import confetti from 'canvas-confetti';
+import { Link } from 'react-router-dom';
 
 interface Team {
   id: string;
@@ -24,6 +25,7 @@ interface Match {
   team1_score: number | null;
   team2_score: number | null;
   winner_id: string | null;
+  bo_format: string | null;
   team1?: Team | null;
   team2?: Team | null;
 }
@@ -234,9 +236,12 @@ const Results = () => {
 
     const isTeam1Winner = team1Won || team1WonByScore;
     const isTeam2Winner = team2Won || team2WonByScore;
+    const isBo3 = match.bo_format === 'bo3';
+    const Wrapper = isBo3 ? Link : 'div';
+    const wrapperProps = isBo3 ? { to: `/wyniki/${match.id}` } : {};
 
     return (
-      <div className={`glass-card p-6 transition-all ${isLive ? 'ring-2 ring-red-500/50 animate-pulse-slow' : ''}`}>
+      <Wrapper {...wrapperProps as any} className={`glass-card p-6 transition-all block ${isLive ? 'ring-2 ring-red-500/50 animate-pulse-slow' : ''} ${isBo3 ? 'hover:ring-2 hover:ring-primary/30 cursor-pointer' : ''}`}>
         {/* Live indicator */}
         {isLive && (
           <div className="flex items-center gap-2 mb-4">
@@ -283,8 +288,14 @@ const Results = () => {
               <span className={isTeam2Winner ? 'text-green-400' : ''}>{match.team2_score ?? 0}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(new Date(match.scheduled_at), 'd MMM yyyy, HH:mm', { locale: dateLocale })}
+              {match.scheduled_at ? format(new Date(match.scheduled_at), 'd MMM yyyy, HH:mm', { locale: dateLocale }) : 'Niezaplanowany'}
             </p>
+            {isBo3 && (
+              <div className="flex items-center gap-1 text-primary text-xs mt-1 justify-center">
+                <span>BO3 — szczegóły</span>
+                <ChevronRight className="w-3 h-3" />
+              </div>
+            )}
           </div>
 
           {/* Team 2 */}
@@ -309,7 +320,7 @@ const Results = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Wrapper>
     );
   };
 

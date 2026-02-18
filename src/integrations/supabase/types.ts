@@ -120,8 +120,50 @@ export type Database = {
           },
         ]
       }
+      match_maps: {
+        Row: {
+          created_at: string | null
+          id: string
+          map_name: string
+          map_number: number | null
+          match_id: string
+          status: string | null
+          team1_score: number | null
+          team2_score: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          map_name: string
+          map_number?: number | null
+          match_id: string
+          status?: string | null
+          team1_score?: number | null
+          team2_score?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          map_name?: string
+          map_number?: number | null
+          match_id?: string
+          status?: string | null
+          team1_score?: number | null
+          team2_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_maps_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
+          bo_format: string | null
           bracket_position: number | null
           commentator1_id: string | null
           commentator2_id: string | null
@@ -145,6 +187,7 @@ export type Database = {
           winner_id: string | null
         }
         Insert: {
+          bo_format?: string | null
           bracket_position?: number | null
           commentator1_id?: string | null
           commentator2_id?: string | null
@@ -168,6 +211,7 @@ export type Database = {
           winner_id?: string | null
         }
         Update: {
+          bo_format?: string | null
           bracket_position?: number | null
           commentator1_id?: string | null
           commentator2_id?: string | null
