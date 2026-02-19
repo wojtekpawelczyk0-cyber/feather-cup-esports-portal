@@ -459,6 +459,7 @@ export type Database = {
           owner_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["team_status"]
+          swiss_status: string | null
           updated_at: string
         }
         Insert: {
@@ -471,6 +472,7 @@ export type Database = {
           owner_id?: string | null
           paid_at?: string | null
           status?: Database["public"]["Enums"]["team_status"]
+          swiss_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -483,6 +485,7 @@ export type Database = {
           owner_id?: string | null
           paid_at?: string | null
           status?: Database["public"]["Enums"]["team_status"]
+          swiss_status?: string | null
           updated_at?: string
         }
         Relationships: []

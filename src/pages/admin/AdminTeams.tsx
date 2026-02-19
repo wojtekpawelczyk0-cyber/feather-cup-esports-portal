@@ -6,11 +6,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 type TeamStatus = 'preparing' | 'ready' | 'registered';
+type SwissStatus = 'advanced' | 'eliminated' | null;
 
 interface Team {
   id: string;
   name: string;
   status: TeamStatus;
+  swiss_status: SwissStatus;
   is_paid: boolean;
   created_at: string;
   owner?: { display_name: string | null; email: string } | null;
@@ -81,6 +83,19 @@ const AdminTeams = () => {
     }
   };
 
+  const setSwissStatus = async (teamId: string, swissStatus: SwissStatus) => {
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({ swiss_status: swissStatus } as any)
+        .eq('id', teamId);
+      if (error) throw error;
+      fetchTeams();
+    } catch (error: any) {
+      toast({ title: 'Błąd', description: error.message, variant: 'destructive' });
+    }
+  };
+
   const statusLabels: Record<TeamStatus, string> = {
     preparing: 'W przygotowaniu',
     ready: 'Gotowa',
@@ -110,6 +125,7 @@ const AdminTeams = () => {
               <th className="text-left p-4 text-muted-foreground font-medium">Nazwa</th>
               <th className="text-left p-4 text-muted-foreground font-medium">Członkowie</th>
               <th className="text-left p-4 text-muted-foreground font-medium">Status</th>
+              <th className="text-left p-4 text-muted-foreground font-medium">Swiss</th>
               <th className="text-left p-4 text-muted-foreground font-medium">Opłacona</th>
               <th className="text-left p-4 text-muted-foreground font-medium">Data utworzenia</th>
               <th className="text-right p-4 text-muted-foreground font-medium">Akcje</th>
@@ -136,6 +152,26 @@ const AdminTeams = () => {
                   )}>
                     {statusLabels[team.status]}
                   </span>
+                </td>
+                <td className="p-4">
+                  <div className="flex gap-1">
+                    <Button
+                      variant={team.swiss_status === 'advanced' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSwissStatus(team.id, team.swiss_status === 'advanced' ? null : 'advanced')}
+                      className={cn('text-xs px-2', team.swiss_status === 'advanced' && 'bg-green-600 hover:bg-green-700')}
+                    >
+                      AWANS
+                    </Button>
+                    <Button
+                      variant={team.swiss_status === 'eliminated' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSwissStatus(team.id, team.swiss_status === 'eliminated' ? null : 'eliminated')}
+                      className={cn('text-xs px-2', team.swiss_status === 'eliminated' && 'bg-red-600 hover:bg-red-700')}
+                    >
+                      ODPADA
+                    </Button>
+                  </div>
                 </td>
                 <td className="p-4">
                   <Button
