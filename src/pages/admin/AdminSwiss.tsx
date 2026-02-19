@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Trophy, Calendar, Shuffle, Trash2, Play, Users, Medal } from 'lucide-react';
+import { Trophy, Calendar, Shuffle, Trash2, Play, Users, Medal, Settings, Save } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Team {
@@ -48,9 +48,12 @@ const AdminSwiss = () => {
   const [totalRounds, setTotalRounds] = useState(5);
   const [defaultDate, setDefaultDate] = useState('');
   const [playoffTeams, setPlayoffTeams] = useState<8 | 16>(8);
+  const [winsToAdvance, setWinsToAdvance] = useState(3);
+  const [lossesToEliminate, setLossesToEliminate] = useState(3);
 
   useEffect(() => {
     fetchData();
+    fetchSwissConfig();
   }, []);
 
   const fetchData = async () => {
@@ -86,6 +89,38 @@ const AdminSwiss = () => {
       toast.error('Błąd podczas ładowania danych');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSwissConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('tournament_settings')
+        .select('key, value')
+        .in('key', ['swiss_wins_to_advance', 'swiss_losses_to_eliminate']);
+      if (data) {
+        data.forEach(s => {
+          if (s.key === 'swiss_wins_to_advance' && s.value) setWinsToAdvance(Number(s.value));
+          if (s.key === 'swiss_losses_to_eliminate' && s.value) setLossesToEliminate(Number(s.value));
+        });
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const saveSwissConfig = async () => {
+    try {
+      for (const [key, value] of [['swiss_wins_to_advance', String(winsToAdvance)], ['swiss_losses_to_eliminate', String(lossesToEliminate)]]) {
+        const { data: existing } = await supabase.from('tournament_settings').select('id').eq('key', key).single();
+        if (existing) {
+          await supabase.from('tournament_settings').update({ value }).eq('key', key);
+        } else {
+          await supabase.from('tournament_settings').insert({ key, value });
+        }
+      }
+      toast.success('Konfiguracja zapisana');
+    } catch (e) {
+      console.error(e);
+      toast.error('Błąd zapisu konfiguracji');
     }
   };
 
@@ -341,6 +376,7 @@ const AdminSwiss = () => {
           <TabsTrigger value="swiss">Faza Szwajcarska</TabsTrigger>
           <TabsTrigger value="standings">Ranking</TabsTrigger>
           <TabsTrigger value="playoff">Playoff</TabsTrigger>
+          <TabsTrigger value="config">Konfiguracja</TabsTrigger>
         </TabsList>
 
         <TabsContent value="swiss" className="space-y-6">
@@ -486,22 +522,28 @@ const AdminSwiss = () => {
                 </tr>
               </thead>
               <tbody>
-                {standings.map((s, i) => (
-                  <tr key={s.team_id} className={`border-b border-border/50 ${i < playoffTeams ? 'bg-green-500/5' : ''}`}>
-                    <td className="p-3 font-bold text-foreground">{i + 1}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        {s.logo_url && <img src={s.logo_url} className="w-6 h-6 rounded" />}
-                        <span className="font-medium text-foreground">{s.team_name}</span>
-                        {i < playoffTeams && <span className="text-xs text-green-400">Playoff</span>}
-                      </div>
-                    </td>
-                    <td className="p-3 text-center text-green-400 font-medium">{s.wins}</td>
-                    <td className="p-3 text-center text-red-400 font-medium">{s.losses}</td>
-                    <td className="p-3 text-center font-bold text-primary">{s.points}</td>
-                    <td className="p-3 text-center text-muted-foreground">{s.round_difference > 0 ? '+' : ''}{s.round_difference}</td>
-                  </tr>
-                ))}
+                {standings.map((s, i) => {
+                  const advanced = s.wins >= winsToAdvance;
+                  const eliminated = s.losses >= lossesToEliminate;
+                  const rowClass = advanced ? 'bg-green-500/10' : eliminated ? 'bg-red-500/10' : '';
+                  return (
+                    <tr key={s.team_id} className={`border-b border-border/50 ${rowClass}`}>
+                      <td className="p-3 font-bold text-foreground">{i + 1}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          {s.logo_url && <img src={s.logo_url} className="w-6 h-6 rounded" />}
+                          <span className="font-medium text-foreground">{s.team_name}</span>
+                          {advanced && <span className="text-xs font-semibold text-green-400">AWANS</span>}
+                          {eliminated && <span className="text-xs font-semibold text-red-400">ODPADA</span>}
+                        </div>
+                      </td>
+                      <td className="p-3 text-center text-green-400 font-medium">{s.wins}</td>
+                      <td className="p-3 text-center text-red-400 font-medium">{s.losses}</td>
+                      <td className="p-3 text-center font-bold text-primary">{s.points}</td>
+                      <td className="p-3 text-center text-muted-foreground">{s.round_difference > 0 ? '+' : ''}{s.round_difference}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -560,6 +602,52 @@ const AdminSwiss = () => {
               Drabinka playoff będzie widoczna po wygenerowaniu. 
               Użyj zakładki "Drabinka" w menu głównym, aby zobaczyć pełny widok.
             </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="config" className="space-y-6">
+          <div className="glass-card p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              Konfiguracja Swiss
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Wygrane do awansu</label>
+                <Select value={String(winsToAdvance)} onValueChange={(v) => setWinsToAdvance(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <SelectItem key={n} value={String(n)}>{n} {n === 1 ? 'wygrana' : n < 5 ? 'wygrane' : 'wygranych'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Drużyna z tyloma wygranymi otrzymuje status AWANS</p>
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Przegrane do odpadnięcia</label>
+                <Select value={String(lossesToEliminate)} onValueChange={(v) => setLossesToEliminate(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <SelectItem key={n} value={String(n)}>{n} {n === 1 ? 'przegrana' : n < 5 ? 'przegrane' : 'przegranych'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Drużyna z tyloma przegranymi otrzymuje status ODPADA</p>
+              </div>
+            </div>
+
+            <Button onClick={saveSwissConfig}>
+              <Save className="w-4 h-4 mr-2" />
+              Zapisz konfigurację
+            </Button>
           </div>
         </TabsContent>
       </Tabs>
